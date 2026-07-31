@@ -2,11 +2,20 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { supabase } from './lib/supabase';
 import { Icon } from './components/Icons';
 import { useFinanceData } from './hooks/useFinanceData';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
 const INCOME_CATEGORIES = ['Salario Base', 'Reparaciones', 'Ventas', 'Extra'];
 const EXPENSE_CATEGORIES = ['Comida', 'Servicios', 'Insumos Taller/Refacciones', 'Transporte', 'Gustos'];
 const STORAGE_OPTIONS = ['Tarjeta', 'Efectivo', 'Cuenta de Ahorro', 'Inversión'];
+
+// Paleta de colores para la gráfica de dona (gastos)
+const EXPENSE_COLORS = {
+  'Comida': '#f59e0b', // amber-500
+  'Servicios': '#3b82f6', // blue-500
+  'Insumos Taller/Refacciones': '#06b6d4', // cyan-500
+  'Transporte': '#8b5cf6', // violet-500
+  'Gustos': '#ec4899' // pink-500
+};
 
 const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -27,7 +36,7 @@ const formatHumanDate = (dateStr) => {
 };
 
 const Section = ({ eyebrow, title, children }) => (
-  <section className="mb-6 rounded-[2rem] border border-neutral-800/40 bg-[#0d0d0d] p-5 sm:p-8 transition-all duration-300">
+  <section className="mb-6 rounded-[2rem] border border-neutral-800/40 bg-[#0d0d0d] p-5 sm:p-8 transition-all duration-300 h-full">
     <div className="mb-5 flex flex-col items-start border-b border-neutral-800/40 pb-4">
       <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.25em] text-emerald-500/80">{eyebrow}</p>
       <h2 className="text-xl font-semibold text-neutral-100 tracking-tight">{title}</h2>
@@ -73,7 +82,7 @@ export default function App() {
   const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
   const availableCash = capitalTotal - totalSavedInGoals;
 
-  // Gráfica optimizada
+  // --- Gráfica de Barras (Tendencia) ---
   const chartData = useMemo(() => {
     const [year, month] = selectedMonth.split('-');
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -89,6 +98,18 @@ export default function App() {
     });
     return data;
   }, [filteredIncomes, filteredExpenses, selectedMonth]);
+
+  // --- NUEVO: Gráfica de Dona (Distribución de Gastos) ---
+  const expenseBreakdown = useMemo(() => {
+    const breakdown = {};
+    filteredExpenses.forEach(exp => {
+      if (!breakdown[exp.category]) breakdown[exp.category] = 0;
+      breakdown[exp.category] += Number(exp.amount);
+    });
+    return Object.keys(breakdown)
+      .map(key => ({ name: key, value: breakdown[key] }))
+      .sort((a, b) => b.value - a.value); // Ordenar de mayor a menor gasto
+  }, [filteredExpenses]);
 
   // --- VALIDACIONES Y CRUD ---
   const saveIncome = useCallback(async (e) => {
@@ -180,7 +201,7 @@ export default function App() {
     setFundModal({ isOpen: false, goal: null, amount: '' });
   };
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomBarTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl">
@@ -190,6 +211,20 @@ export default function App() {
               {entry.dataKey === 'ingresos' ? '+' : '-'}{fmt.format(entry.value)}
             </p>
           ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomPieTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl">
+          <p className="text-neutral-400 text-xs mb-1 font-semibold">{payload[0].name}</p>
+          <p className="text-sm font-mono font-bold text-white">
+            {fmt.format(payload[0].value)}
+          </p>
         </div>
       );
     }
@@ -256,8 +291,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* --- SECCIÓN 1: RESUMEN Y GRÁFICA --- */}
+        {/* --- SECCIÓN 1: RESUMEN Y GRÁFICAS --- */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
+          
+          {/* Tarjetas de flujo */}
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl">
               <p className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Ingresos Neto</p>
@@ -273,26 +310,87 @@ export default function App() {
             </div>
           </div>
 
-          <Section eyebrow="Analíticas" title="Tendencia del Mes">
-            <div className="h-64 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="day" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{fill: '#262626', opacity: 0.4}} />
-                  <Bar dataKey="ingresos" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-inc-${index}`} fill={entry.ingresos > 0 ? '#34d399' : 'transparent'} />
-                    ))}
-                  </Bar>
-                  <Bar dataKey="gastos" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-exp-${index}`} fill={entry.gastos > 0 ? '#fb7185' : 'transparent'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Gráficas */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <Section eyebrow="Analíticas" title="Tendencia del Mes">
+                <div className="h-64 w-full mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="day" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomBarTooltip />} cursor={{fill: '#262626', opacity: 0.4}} />
+                      <Bar dataKey="ingresos" radius={[4, 4, 0, 0]}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-inc-${index}`} fill={entry.ingresos > 0 ? '#34d399' : 'transparent'} />
+                        ))}
+                      </Bar>
+                      <Bar dataKey="gastos" radius={[4, 4, 0, 0]}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-exp-${index}`} fill={entry.gastos > 0 ? '#fb7185' : 'transparent'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Section>
             </div>
-          </Section>
+            
+            <div className="lg:col-span-1">
+              <Section eyebrow="Distribución" title="Categorías de Gasto">
+                {expenseBreakdown.length > 0 ? (
+                  <div className="flex flex-col items-center">
+                    <div className="h-44 w-full mt-2 relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={expenseBreakdown}
+                            innerRadius={55}
+                            outerRadius={75}
+                            paddingAngle={5}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {expenseBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[entry.name] || '#52525b'} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomPieTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {/* Porcentaje en el centro */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-2xl font-bold text-white">100%</span>
+                        <span className="text-[9px] text-neutral-500 uppercase tracking-widest mt-0.5">Gastos</span>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full mt-4 space-y-2.5">
+                      {expenseBreakdown.map((item, idx) => {
+                        const pct = monthExpenseTotal > 0 ? ((item.value / monthExpenseTotal) * 100).toFixed(1) : 0;
+                        return (
+                          <div key={idx} className="flex items-center justify-between border-b border-neutral-800/40 pb-2.5 last:border-0 last:pb-0">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLORS[item.name] || '#52525b' }}></span>
+                              <span className="text-xs font-medium text-neutral-300">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3 font-mono text-xs">
+                              <span className="text-neutral-400">{fmt.format(item.value)}</span>
+                              <span className="text-white font-bold w-9 text-right bg-neutral-900 px-1.5 py-0.5 rounded">{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-64 flex flex-col items-center justify-center text-neutral-600 space-y-2">
+                    <Icon.Wallet className="h-8 w-8 opacity-20" />
+                    <span className="text-sm italic font-medium">Sin gastos este mes</span>
+                  </div>
+                )}
+              </Section>
+            </div>
+          </div>
         </div>
 
         {/* --- SECCIÓN 2: TRANSACCIONES --- */}
