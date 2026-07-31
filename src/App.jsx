@@ -81,7 +81,18 @@ export default function App() {
     });
     return data;
   }, [filteredIncomes, filteredExpenses, selectedMonth]);
+  const monthIncomeTotal = filteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
+  const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
 
+  // --- NUEVO: CÁLCULOS HISTÓRICOS GLOBALES ---
+  const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
+  const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  
+  const capitalTotal = historicalIncomeTotal - historicalExpenseTotal;
+  const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
+  const availableCash = capitalTotal - totalSavedInGoals;
+  // -------------------------------------------
   // --- VALIDACIONES Y CRUD ---
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
@@ -223,6 +234,33 @@ export default function App() {
             <input type="month" className="bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
           </div>
         </header>
+        </header>
+
+        {/* --- CAPITAL TOTAL HISTÓRICO --- */}
+        <div className="bg-gradient-to-b from-neutral-900/50 to-neutral-900/20 border border-neutral-800/60 rounded-[2rem] p-6 sm:p-8 text-center mb-8 backdrop-blur-sm shadow-xl">
+          <h2 className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.25em] mb-2 flex items-center justify-center gap-2">
+             Patrimonio Total Acumulado
+          </h2>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <p className="text-5xl sm:text-6xl font-bold text-white tracking-tighter">
+              {fmt.format(capitalTotal)}
+            </p>
+          </div>
+          
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-10 border-t border-neutral-800/50 pt-5">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Ahorrado en Metas</span>
+              <span className="text-sm font-semibold text-emerald-400">{fmt.format(totalSavedInGoals)}</span>
+            </div>
+            <div className="w-px h-8 bg-neutral-800/80"></div>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Capital Libre</span>
+              <span className="text-sm font-semibold text-neutral-300">{fmt.format(availableCash)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* --- SECCIÓN 1: RESUMEN Y GRÁFICA --- */}
 
         {/* --- SECCIÓN 1: RESUMEN Y GRÁFICA --- */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
