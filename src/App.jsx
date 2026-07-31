@@ -65,6 +65,14 @@ export default function App() {
   const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
 
+  // --- CÁLCULOS HISTÓRICOS GLOBALES ---
+  const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
+  const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+  
+  const capitalTotal = historicalIncomeTotal - historicalExpenseTotal;
+  const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
+  const availableCash = capitalTotal - totalSavedInGoals;
+
   // Gráfica optimizada
   const chartData = useMemo(() => {
     const [year, month] = selectedMonth.split('-');
@@ -81,18 +89,7 @@ export default function App() {
     });
     return data;
   }, [filteredIncomes, filteredExpenses, selectedMonth]);
-  const monthIncomeTotal = filteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
-  const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
-  const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
 
-  // --- NUEVO: CÁLCULOS HISTÓRICOS GLOBALES ---
-  const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
-  const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
-  
-  const capitalTotal = historicalIncomeTotal - historicalExpenseTotal;
-  const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
-  const availableCash = capitalTotal - totalSavedInGoals;
-  // -------------------------------------------
   // --- VALIDACIONES Y CRUD ---
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
@@ -234,7 +231,6 @@ export default function App() {
             <input type="month" className="bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
           </div>
         </header>
-        </header>
 
         {/* --- CAPITAL TOTAL HISTÓRICO --- */}
         <div className="bg-gradient-to-b from-neutral-900/50 to-neutral-900/20 border border-neutral-800/60 rounded-[2rem] p-6 sm:p-8 text-center mb-8 backdrop-blur-sm shadow-xl">
@@ -259,8 +255,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        {/* --- SECCIÓN 1: RESUMEN Y GRÁFICA --- */}
 
         {/* --- SECCIÓN 1: RESUMEN Y GRÁFICA --- */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
