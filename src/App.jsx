@@ -292,6 +292,7 @@ export default function App() {
     let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
       <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+        {/* Ambient Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
         
@@ -353,13 +354,14 @@ export default function App() {
   // --- RENDER 3: APP PRINCIPAL ---
   return (
     <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+      {/* ORBES AMBIENTALES DE FONDO */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] mix-blend-screen"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] mix-blend-screen"></div>
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
         {/* CABECERA */}
         <header className="flex flex-col sm:flex-row justify-between items-end mb-8 gap-4">
