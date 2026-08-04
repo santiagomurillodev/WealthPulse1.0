@@ -37,7 +37,7 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- ESTILOS GLOBALES PARA OCULTAR BARRAS DE SCROLL FEAS EN PC --- */
+/* --- ESTILOS GLOBALES (Corrección de Scroll y Fechas) --- */
 const GlobalStyles = () => (
   <style>{`
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -45,6 +45,17 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+    
+    /* Forzar alineación izquierda en iPhone para inputs de fecha y mes */
+    input[type="date"], input[type="month"] {
+      text-align: left !important;
+      justify-content: flex-start !important;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="month"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.6;
+    }
   `}</style>
 );
 
@@ -74,8 +85,8 @@ const GlassSelect = (props) => (
 const GlassButton = ({ children, onClick, type = "button", variant = 'primary', className = '' }) => {
   const baseStyle = "w-full rounded-[20px] px-5 py-4 text-[17px] font-bold tracking-wide transition-all active:scale-[0.97] flex justify-center items-center gap-2";
   const variants = {
-    primary: "bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:shadow-[0_0_30px_rgba(52,211,153,0.5)] border border-white/20",
-    danger: "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] border border-white/20",
+    primary: "bg-emerald-500 text-black shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:shadow-[0_0_30px_rgba(52,211,153,0.5)] border border-emerald-400",
+    danger: "bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] border border-rose-400",
     glass: "bg-white/10 backdrop-blur-md text-white border border-white/10 hover:bg-white/20"
   };
   return <button type={type} onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>{children}</button>;
@@ -298,16 +309,16 @@ export default function App() {
     return null;
   };
 
-  // --- RENDER 1: PANTALLA PIN ---
+  // --- RENDER 1: PANTALLA PIN (LIMPIA SIN CAPSULA) ---
   if (!isAuthenticated) {
     let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
         <GlobalStyles />
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
         
-        <main className="relative z-10 w-full max-w-[320px] flex flex-col items-center">
+        <div className="relative z-10 w-full max-w-[320px] flex flex-col items-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(52,211,153,0.4)]">
             <Icon.Pulse className="h-8 w-8 text-black" />
           </div>
@@ -331,20 +342,20 @@ export default function App() {
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
             </button>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     );
   }
 
   // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
         <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         
-        <main className="relative z-10 max-w-7xl mx-auto space-y-8 pt-6">
+        <div className="relative z-10 max-w-7xl mx-auto space-y-8 pt-6">
           <div className="flex justify-between items-end">
             <div className="w-48 h-10 bg-white/5 backdrop-blur-md rounded-xl animate-pulse"></div>
             <div className="flex gap-3">
@@ -358,26 +369,25 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
       <GlobalStyles />
       
-      {/* ORBES AMBIENTALES DE FONDO */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] mix-blend-screen"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] mix-blend-screen"></div>
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
       </div>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        {/* CABECERA ALINEADA */}
+        {/* CABECERA (Solución al selector de Mes y Tabs de Escritorio) */}
         <header className="flex flex-col gap-6 mb-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -398,9 +408,14 @@ export default function App() {
           </div>
 
           <div className="flex flex-row items-center gap-3 w-full sm:justify-end">
-            <GlassSelect className="!w-auto !py-3 !px-4 !text-[15px] !rounded-[16px] flex-1 sm:flex-none" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-              <option value={selectedMonth}>{selectedMonth}</option>
-            </GlassSelect>
+            <div className="relative flex items-center bg-black/20 backdrop-blur-xl border border-white/10 rounded-[16px] px-4 py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] flex-1 sm:flex-none sm:w-auto w-full">
+              <input 
+                type="month" 
+                className="w-full bg-transparent text-[15px] font-semibold text-white outline-none cursor-pointer" 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(e.target.value)} 
+              />
+            </div>
             <GlassButton variant="glass" className="!w-auto !p-3 !rounded-[16px]" onClick={() => setIsPrivate(!isPrivate)}>
               {isPrivate ? <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> 
               : <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
@@ -427,35 +442,36 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: RESUMEN */}
+        {/* PESTAÑA: RESUMEN (Solución al descuadre de cifras a la izquierda) */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-4">
                 <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Ingresos</span>
                 <TrendBadge value={incomeTrend} />
               </div>
-              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]'}`}>{mask(monthIncomeTotal)}</p>
+              <p className={`text-left text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]'}`}>{mask(monthIncomeTotal)}</p>
             </GlassCard>
             
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-4">
                 <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Gastos</span>
                 <TrendBadge value={expenseTrend} invertColors={true} />
               </div>
-              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.3)]'}`}>{mask(monthExpenseTotal)}</p>
+              <p className={`text-left text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.3)]'}`}>{mask(monthExpenseTotal)}</p>
             </GlassCard>
 
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start mb-4">
                 <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Flujo</span>
                 <TrendBadge value={flowTrend} />
               </div>
-              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : monthNetFlow >= 0 ? 'text-white' : 'text-rose-500'}`}>{mask(monthNetFlow)}</p>
+              <p className={`text-left text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : monthNetFlow >= 0 ? 'text-white' : 'text-rose-500'}`}>{mask(monthNetFlow)}</p>
             </GlassCard>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Solución a las barras verdes del gráfico que no se veían */}
             <GlassCard className="lg:col-span-2 p-6">
               <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Tendencia del Mes</h3>
               <div className="h-64 w-full">
@@ -463,18 +479,8 @@ export default function App() {
                   <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                     <XAxis dataKey="day" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{fill: '#ffffff10'}} />
-                    <Bar dataKey="ingresos" fill="url(#colorEmerald)" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="gastos" fill="url(#colorRose)" radius={[6, 6, 0, 0]} />
-                    <defs>
-                      <linearGradient id="colorEmerald" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#34D399" stopOpacity={1}/>
-                        <stop offset="100%" stopColor="#059669" stopOpacity={0.8}/>
-                      </linearGradient>
-                      <linearGradient id="colorRose" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FB7185" stopOpacity={1}/>
-                        <stop offset="100%" stopColor="#E11D48" stopOpacity={0.8}/>
-                      </linearGradient>
-                    </defs>
+                    <Bar dataKey="ingresos" fill="#34C759" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="gastos" fill="#FF3B30" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -513,97 +519,101 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: TRANSACCIONES */}
+        {/* PESTAÑA: TRANSACCIONES (Solución de formularios compactos y acordeón interno) */}
         <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             <div className="space-y-6">
-              <GlassCard className="p-6">
-                <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Ingreso</h3>
-                <form onSubmit={saveIncome} className="space-y-4">
-                  <GlassSelect value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>{INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
-                  <div className="relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
-                    <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} />
-                  </div>
-                  {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
-                    <GlassInput type="number" step="any" min="0" placeholder="Costo insumo (Opcional)" value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} />
-                  )}
-                  <GlassInput type="date" required value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} />
-                  <GlassInput type="text" placeholder="Nota opcional" value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} />
-                  <GlassButton type="submit" variant="primary" className="mt-2">Guardar Ingreso</GlassButton>
-                </form>
-              </GlassCard>
-
-              {/* Acordeón Glass */}
               <GlassCard className="overflow-hidden">
-                <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
-                  <h3 className="text-[15px] font-bold text-white uppercase tracking-widest">Historial</h3>
-                  <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showIncomesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="px-4 pb-4">
-                    {filteredIncomes.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredIncomes.map((i) => {
-                      const net = Number(i.amount) - (Number(i.cost) || 0);
-                      return (
-                        <div key={i.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
-                          <div>
-                            <p className="text-[17px] font-bold text-white/90">{i.category}</p>
-                            <p className="text-[13px] text-white/50">{i.note || formatHumanDate(i.date)}</p>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>+{mask(net)}</p>
-                            <div className="flex gap-2">
-                              <button onClick={() => setIncomeForm(i)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
-                              <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                <div className="p-6">
+                  <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Ingreso</h3>
+                  <form onSubmit={saveIncome} className="space-y-4">
+                    <GlassSelect value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>{INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
+                      <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} />
+                    </div>
+                    {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
+                      <GlassInput type="number" step="any" min="0" placeholder="Costo insumo (Opcional)" value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} />
+                    )}
+                    <GlassInput type="date" required value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} />
+                    <GlassInput type="text" placeholder="Nota opcional" value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} />
+                    <GlassButton type="submit" variant="primary" className="mt-2">Guardar Ingreso</GlassButton>
+                  </form>
+                </div>
+                
+                {/* Historial Integrado */}
+                <div className="border-t border-white/10 bg-white/[0.02]">
+                  <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
+                    <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Ingresos</h3>
+                    <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showIncomesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="px-4 pb-4">
+                      {filteredIncomes.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredIncomes.map((i) => {
+                        const net = Number(i.amount) - (Number(i.cost) || 0);
+                        return (
+                          <div key={i.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
+                            <div>
+                              <p className="text-[17px] font-bold text-white/90">{i.category}</p>
+                              <p className="text-[13px] text-white/50">{i.note || formatHumanDate(i.date)}</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>+{mask(net)}</p>
+                              <div className="flex gap-2">
+                                <button onClick={() => setIncomeForm(i)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
+                                <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               </GlassCard>
             </div>
 
             <div className="space-y-6">
-              <GlassCard className="p-6">
-                <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Gasto</h3>
-                <form onSubmit={saveExpense} className="space-y-4">
-                  <GlassSelect value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
-                  <div className="relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
-                    <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
-                  </div>
-                  <GlassInput type="date" required value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} />
-                  <GlassInput type="text" placeholder="Nota opcional" value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} />
-                  <GlassButton type="submit" variant="danger" className="mt-2">Guardar Gasto</GlassButton>
-                </form>
-              </GlassCard>
-
-              {/* Acordeón Glass */}
               <GlassCard className="overflow-hidden">
-                <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
-                  <h3 className="text-[15px] font-bold text-white uppercase tracking-widest">Historial</h3>
-                  <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showExpensesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="px-4 pb-4">
-                    {filteredExpenses.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredExpenses.map((e) => (
-                      <div key={e.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
-                        <div>
-                          <p className="text-[17px] font-bold text-white/90">{e.category}</p>
-                          <p className="text-[13px] text-white/50">{e.note || formatHumanDate(e.date)}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-rose-400'}`}>-{mask(e.amount)}</p>
-                          <div className="flex gap-2">
-                            <button onClick={() => setExpenseForm(e)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
-                            <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                <div className="p-6">
+                  <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Gasto</h3>
+                  <form onSubmit={saveExpense} className="space-y-4">
+                    <GlassSelect value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
+                      <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                    </div>
+                    <GlassInput type="date" required value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} />
+                    <GlassInput type="text" placeholder="Nota opcional" value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} />
+                    <GlassButton type="submit" variant="danger" className="mt-2">Guardar Gasto</GlassButton>
+                  </form>
+                </div>
+                
+                {/* Historial Integrado */}
+                <div className="border-t border-white/10 bg-white/[0.02]">
+                  <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
+                    <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Gastos</h3>
+                    <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showExpensesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="px-4 pb-4">
+                      {filteredExpenses.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredExpenses.map((e) => (
+                        <div key={e.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
+                          <div>
+                            <p className="text-[17px] font-bold text-white/90">{e.category}</p>
+                            <p className="text-[13px] text-white/50">{e.note || formatHumanDate(e.date)}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-rose-400'}`}>-{mask(e.amount)}</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setExpenseForm(e)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
+                              <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               </GlassCard>
@@ -611,7 +621,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: METAS */}
+        {/* PESTAÑA: METAS (Solución de matemáticas semanales restaurada) */}
         <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} animate-fade-in`}>
           <GlassCard className="p-6 mb-8">
             <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Planificación</h3>
@@ -631,6 +641,16 @@ export default function App() {
             {goals.map((g) => {
               const target = Number(g.target); const saved = Number(g.saved);
               const pct = Math.min(100, (saved / target) * 100);
+              const remaining = target - saved;
+
+              // Matemáticas restauradas para Meta Semanal
+              const d1 = new Date();
+              const d2 = new Date(g.deadline + 'T00:00:00');
+              const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+              let weeksLeft = Math.ceil((d2.getTime() - d1.getTime()) / msPerWeek);
+              if (weeksLeft <= 0) weeksLeft = 1;
+              const weeklyNeeded = remaining / weeksLeft;
+
               return (
                 <GlassCard key={g.id} className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-all group">
                   <div className="flex justify-between items-start mb-6">
@@ -651,6 +671,18 @@ export default function App() {
                       <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${pct}%` }}></div>
                     </div>
                     
+                    {/* Visualización de la Meta Semanal */}
+                    {remaining > 0 && (
+                      <div className="flex justify-between items-center mb-4 bg-black/20 rounded-[16px] p-3 border border-white/5">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-white/50 font-semibold uppercase tracking-wider mb-0.5">Meta Semanal</span>
+                          <span className={`text-[15px] font-bold tracking-wide ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>
+                            {mask(weeklyNeeded)} <span className="text-white/40 text-[11px] font-normal tracking-normal ml-1">x {weeksLeft} sem</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
                     <GlassButton variant="glass" onClick={() => handleAddFundsClick(g)} className="!py-3 text-[15px] !rounded-[16px] text-emerald-400">
                       Abonar Fondos
                     </GlassButton>
@@ -662,9 +694,9 @@ export default function App() {
         </div>
       </main>
 
-      {/* --- NAVEGACIÓN INFERIOR (BORDE A BORDE - SOLUCIÓN PUNTO 4) --- */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/[0.02] backdrop-blur-[60px] border-t border-white/[0.08]">
-        <ul className="flex justify-around items-center h-[84px] pb-safe pt-2 px-4">
+      {/* --- NAVEGACIÓN INFERIOR (Reordenado: Resumen, Tracker, Metas, Rápido) --- */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/60 backdrop-blur-2xl border-t border-white/10">
+        <ul className="flex justify-around items-center h-[84px] pb-safe pt-2 px-2">
           <li className="flex-1 flex justify-center">
             <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
               <Icon.Home className="w-6 h-6" />
@@ -678,17 +710,18 @@ export default function App() {
             </button>
           </li>
           <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'metas' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Target className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Metas</span>
+            </button>
+          </li>
+          {/* Botón rápido ahora está en la esquina derecha */}
+          <li className="flex-1 flex justify-center">
             <button onClick={() => setIsQuickAddOpen(true)} className="flex flex-col items-center gap-1 transition-all text-emerald-400 active:scale-95">
               <div className="bg-emerald-500/20 rounded-full p-1.5 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
                 <Icon.Plus className="w-5 h-5" />
               </div>
               <span className="text-[10px] font-semibold">Rápido</span>
-            </button>
-          </li>
-          <li className="flex-1 flex justify-center">
-            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'metas' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
-              <Icon.Target className="w-6 h-6" />
-              <span className="text-[10px] font-semibold">Metas</span>
             </button>
           </li>
         </ul>
@@ -758,6 +791,6 @@ export default function App() {
           </GlassCard>
         </div>
       )}
-    </div>
+    </main>
   );
 }
