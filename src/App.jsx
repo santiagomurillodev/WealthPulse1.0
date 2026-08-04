@@ -93,6 +93,12 @@ export default function App() {
   const [showIncomesHistory, setShowIncomesHistory] = useState(false);
   const [showExpensesHistory, setShowExpensesHistory] = useState(false);
 
+  // --- ESTADOS DE GASTO RÁPIDO (BOTTOM SHEET) ---
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [qAmount, setQAmount] = useState('');
+  const [qCategory, setQCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [qNote, setQNote] = useState('');
+
   const [incomeForm, setIncomeForm] = useState({ id: null, amount: '', cost: '', category: INCOME_CATEGORIES[0], note: '', date: todayISO() });
   const [expenseForm, setExpenseForm] = useState({ id: null, amount: '', category: EXPENSE_CATEGORIES[0], note: '', date: todayISO() });
   const [goalForm, setGoalForm] = useState({ id: null, name: '', target: '', saved: '', deadline: '', storage: STORAGE_OPTIONS[0] });
@@ -135,8 +141,6 @@ export default function App() {
 
   const triggerPinError = (msg, nextStep) => {
     setPinError(true);
-    // Vibración háptica si está disponible en el dispositivo
-    if (navigator.vibrate) navigator.vibrate(200); 
     setTimeout(() => {
       setEnteredPin('');
       setPinError(false);
@@ -210,6 +214,23 @@ export default function App() {
   }, [filteredExpenses]);
 
   // --- CRUD FUNCTIONS ---
+  const handleQuickExpense = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(qAmount);
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
+
+    const { data, error } = await supabase.from('expenses').insert([{ amount, category: qCategory, note: qNote, date: todayISO() }]).select();
+    if (!error && data) {
+      setExpenses((prev) => [data[0], ...prev]);
+      setIsQuickAddOpen(false);
+      setQAmount('');
+      setQNote('');
+      setQCategory(EXPENSE_CATEGORIES[0]);
+    } else {
+      alert("Error al guardar el gasto rápido.");
+    }
+  };
+
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(incomeForm.amount);
@@ -229,7 +250,7 @@ export default function App() {
   const saveExpense = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(expenseForm.amount);
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido mayor a 0.');
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto de gasto válido mayor a 0.');
     if (expenseForm.id) {
       const { data, error } = await supabase.from('expenses').update({ amount, category: expenseForm.category, note: expenseForm.note, date: expenseForm.date }).eq('id', expenseForm.id).select();
       if (!error && data) setExpenses((prev) => prev.map((ex) => (ex.id === expenseForm.id ? data[0] : ex)));
@@ -429,7 +450,6 @@ export default function App() {
     return (
       <div className="min-h-screen bg-neutral-950 p-4 sm:p-6 lg:p-8 antialiased">
         <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
-          {/* Header Skeleton */}
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-5 border-b border-neutral-800/80 pb-6">
             <div className="flex gap-4 items-center">
               <div className="w-12 h-12 bg-neutral-900 rounded-2xl"></div>
@@ -438,15 +458,8 @@ export default function App() {
                 <div className="w-20 h-3 bg-neutral-900 rounded"></div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="w-32 h-10 bg-neutral-900 rounded-xl"></div>
-              <div className="w-10 h-10 bg-neutral-900 rounded-xl"></div>
-              <div className="w-24 h-10 bg-neutral-900 rounded-xl"></div>
-            </div>
           </div>
-          {/* Big Card Skeleton */}
           <div className="w-full h-56 bg-gradient-to-b from-neutral-900/50 to-neutral-900/10 rounded-[2rem] border border-neutral-800/40"></div>
-          {/* 3 Small Cards Skeleton */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
             <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
@@ -460,7 +473,7 @@ export default function App() {
   // --- RENDER 3: APLICACIÓN PRINCIPAL ---
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans transition-colors duration-500 relative">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-28 lg:pb-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-32 lg:pb-8">
         
         {/* CABECERA */}
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-neutral-800/80 pb-6">
@@ -483,7 +496,6 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-            {/* Selector de Mes */}
             <div className="flex items-center flex-1 sm:flex-none bg-neutral-900/60 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
               <input 
                 type="month" 
@@ -492,28 +504,14 @@ export default function App() {
                 onChange={(e) => setSelectedMonth(e.target.value)} 
               />
             </div>
-
-            {/* BOTÓN MODO PRIVACIDAD */}
-            <button 
-              onClick={() => setIsPrivate(!isPrivate)}
-              className={`flex items-center justify-center p-2.5 rounded-xl transition-all shadow-md active:scale-95 border ${isPrivate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 border-neutral-700/50'}`}
-              title={isPrivate ? "Mostrar montos" : "Ocultar montos"}
-            >
-              {isPrivate ? (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-              ) : (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              )}
-            </button>
-
-            {/* BOTÓN EXPORTAR */}
+            
+            {/* Ocultar en móvil para ponerlo abajo, mostrar en PC */}
             <button 
               onClick={handleExportPDF}
-              className="flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md active:scale-95 border border-neutral-700/50"
-              title="Descargar Estado de Cuenta en PDF"
+              className="hidden sm:flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md active:scale-95 border border-neutral-700/50"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              <span className="hidden sm:inline">Exportar</span>
+              <svg className="w-5 h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <span>Exportar</span>
             </button>
           </div>
         </header>
@@ -895,31 +893,79 @@ export default function App() {
         </div>
       </div>
 
-      {/* --- NAVEGACIÓN MÓVIL SLIM --- */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/90 backdrop-blur-md border-t border-neutral-800/80 z-40">
-        <ul className="flex justify-around items-center px-2 py-1.5 pb-safe">
-          <li>
-            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${activeTab === 'resumen' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Home className="h-5 w-5" />
+      {/* --- NUEVA NAVEGACIÓN MÓVIL (DISEÑO APPLE PAY) --- */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/90 backdrop-blur-xl border-t border-neutral-800/80 z-40 h-16">
+        {/* Botón Flotante Central (FAB) */}
+        <div className="absolute left-1/2 -top-6 -translate-x-1/2">
+          <button 
+            onClick={() => setIsQuickAddOpen(true)} 
+            className="flex items-center justify-center w-14 h-14 bg-emerald-500 hover:bg-emerald-400 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white border-[5px] border-neutral-950 transition-transform active:scale-90"
+          >
+            <Icon.Plus className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Iconos Laterales */}
+        <ul className="flex justify-between items-center h-full px-6 pb-safe">
+          <div className="flex gap-8">
+            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center transition-all ${activeTab === 'resumen' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              <Icon.Home className="h-5 w-5 mb-0.5" />
               <span className="text-[9px] font-bold tracking-wide">Resumen</span>
             </button>
-          </li>
-          <li>
-            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${activeTab === 'transacciones' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Wallet className="h-5 w-5" />
-              <span className="text-[9px] font-bold tracking-wide">Movimientos</span>
+            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center transition-all ${activeTab === 'transacciones' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              <Icon.Wallet className="h-5 w-5 mb-0.5" />
+              <span className="text-[9px] font-bold tracking-wide">Tracker</span>
             </button>
-          </li>
-          <li>
-            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${activeTab === 'metas' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Target className="h-5 w-5" />
+          </div>
+          
+          <div className="flex gap-8">
+            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center transition-all ${activeTab === 'metas' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              <Icon.Target className="h-5 w-5 mb-0.5" />
               <span className="text-[9px] font-bold tracking-wide">Metas</span>
             </button>
-          </li>
+            {/* Botón de privacidad fácil acceso en móvil */}
+            <button onClick={() => setIsPrivate(!isPrivate)} className={`flex flex-col items-center transition-all ${isPrivate ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
+              {isPrivate ? (
+                <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+              ) : (
+                <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              )}
+              <span className="text-[9px] font-bold tracking-wide">Ocultar</span>
+            </button>
+          </div>
         </ul>
       </nav>
 
-      {/* MODAL BORRAR */}
+      {/* --- BOTTOM SHEET MODAL (CAPTURA RÁPIDA) --- */}
+      <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        {/* Capa de desenfoque trasera */}
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsQuickAddOpen(false)}></div>
+        
+        {/* Tarjeta deslizable */}
+        <div className={`absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-[2.5rem] p-6 pb-safe transition-transform duration-300 transform ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="w-12 h-1.5 bg-neutral-700 rounded-full mx-auto mb-6"></div>
+          <h3 className="text-xl font-bold text-white tracking-tight mb-6 text-center">Gasto Rápido</h3>
+          
+          <form onSubmit={handleQuickExpense} className="flex flex-col gap-4">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xl">$</span>
+              <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-4 pl-9 text-2xl font-mono text-white outline-none transition-all focus:border-emerald-500/50" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
+            </div>
+
+            <select className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3.5 text-sm font-medium text-white outline-none focus:border-emerald-500/50" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
+              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            <input type="text" placeholder="¿En qué gastaste? (Opcional)" className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3.5 text-sm font-medium text-white outline-none placeholder:text-neutral-600 focus:border-emerald-500/50" value={qNote} onChange={(e) => setQNote(e.target.value)} />
+            
+            <button type="submit" className="mt-2 w-full rounded-2xl bg-emerald-600 px-4 py-4 text-sm font-bold tracking-wide text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all">
+              Guardar Gasto
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* MODALES CLÁSICOS */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
@@ -936,7 +982,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL ABONAR */}
       {fundModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
