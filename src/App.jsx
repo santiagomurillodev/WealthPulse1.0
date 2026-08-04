@@ -298,18 +298,16 @@ export default function App() {
     return null;
   };
 
-  // --- RENDER 1: PANTALLA PIN (PANTALLA COMPLETA SIN CAPSULA) ---
+  // --- RENDER 1: PANTALLA PIN ---
   if (!isAuthenticated) {
-    let instruction = pinSetupStep === 'create' ? 'Crea un PIN de acceso' : pinSetupStep === 'confirm' ? 'Confirma tu PIN' : 'Desbloquear WealthPulse';
+    let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
         <GlobalStyles />
-        {/* Ambient Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
         
-        {/* Contenido libre sin GlassCard (diseño inmersivo) */}
-        <div className="relative z-10 w-full max-w-[320px] flex flex-col items-center">
+        <main className="relative z-10 w-full max-w-[320px] flex flex-col items-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(52,211,153,0.4)]">
             <Icon.Pulse className="h-8 w-8 text-black" />
           </div>
@@ -333,20 +331,20 @@ export default function App() {
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
             </button>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
         <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         
-        <div className="relative z-10 max-w-7xl mx-auto space-y-8 pt-6">
+        <main className="relative z-10 max-w-7xl mx-auto space-y-8 pt-6">
           <div className="flex justify-between items-end">
             <div className="w-48 h-10 bg-white/5 backdrop-blur-md rounded-xl animate-pulse"></div>
             <div className="flex gap-3">
@@ -360,14 +358,14 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
       <GlobalStyles />
       
       {/* ORBES AMBIENTALES DE FONDO */}
@@ -377,11 +375,10 @@ export default function App() {
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
         {/* CABECERA ALINEADA */}
         <header className="flex flex-col gap-6 mb-10">
-          {/* Fila 1: Logo y Tabs de Escritorio */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-[36px] sm:text-[44px] font-extrabold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/50 mb-1">
@@ -393,7 +390,6 @@ export default function App() {
               </p>
             </div>
             
-            {/* TABS DE ESCRITORIO (SOLUCIÓN PUNTO 2) */}
             <div className="hidden sm:flex bg-white/5 backdrop-blur-xl border border-white/10 rounded-full p-1.5 shadow-inner">
               <button onClick={() => setActiveTab('resumen')} className={`px-6 py-2 rounded-full text-[14px] font-bold transition-all ${activeTab === 'resumen' ? 'bg-white/10 text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}>Resumen</button>
               <button onClick={() => setActiveTab('transacciones')} className={`px-6 py-2 rounded-full text-[14px] font-bold transition-all ${activeTab === 'transacciones' ? 'bg-white/10 text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}>Tracker</button>
@@ -401,7 +397,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Fila 2: Controles (Solución Punto 3 - Todo cuadrado y bien alineado) */}
           <div className="flex flex-row items-center gap-3 w-full sm:justify-end">
             <GlassSelect className="!w-auto !py-3 !px-4 !text-[15px] !rounded-[16px] flex-1 sm:flex-none" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
               <option value={selectedMonth}>{selectedMonth}</option>
@@ -413,8 +408,6 @@ export default function App() {
             <GlassButton variant="glass" className="!w-auto !p-3 !rounded-[16px]" onClick={handleExportPDF}>
               <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </GlassButton>
-            
-            {/* Botón Gasto Rápido en PC */}
             <GlassButton variant="primary" className="hidden sm:flex !w-auto !py-3 !px-5 !rounded-[16px] ml-4" onClick={() => setIsQuickAddOpen(true)}>
               <Icon.Plus className="w-5 h-5"/> Gasto Rápido
             </GlassButton>
@@ -765,6 +758,6 @@ export default function App() {
           </GlassCard>
         </div>
       )}
-    </main>
+    </div>
   );
 }
