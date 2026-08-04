@@ -4,7 +4,6 @@ import { Icon } from './components/Icons';
 import { useFinanceData } from './hooks/useFinanceData';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
-// Importación corregida para Vite/React moderno
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -55,6 +54,24 @@ const Field = ({ label, children }) => (
   </label>
 );
 
+// Componente para el indicador de rendimiento (Trend Badge)
+const TrendBadge = ({ value, invertColors = false }) => {
+  if (value === 0 || isNaN(value)) {
+    return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-neutral-500 bg-neutral-800/50 uppercase tracking-wide">≈ 0% vs mes ant.</span>;
+  }
+  const isPositive = value > 0;
+  // Si invertColors es true (ej. para Gastos), un aumento (positivo) es malo (rojo).
+  const isGood = invertColors ? !isPositive : isPositive;
+  const colorCls = isGood ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10';
+  const icon = isPositive ? '↑' : '↓';
+  
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 w-max ${colorCls}`}>
+      {icon} {Math.abs(value).toFixed(1)}% <span className="opacity-70 font-medium">vs ant.</span>
+    </span>
+  );
+};
+
 const inputCls = 'w-full rounded-2xl border-none bg-neutral-900 px-4 py-3.5 text-[15px] font-medium text-neutral-200 outline-none ring-1 ring-neutral-800 transition-all duration-200 placeholder:text-neutral-600 focus:bg-neutral-800 focus:ring-2 focus:ring-emerald-500/50';
 
 /* ------------------------------- APP PRINCIPAL ------------------------------- */
@@ -62,6 +79,10 @@ export default function App() {
   const { incomes, setIncomes, expenses, setExpenses, goals, setGoals, isLoading } = useFinanceData();
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
+
+  // --- NUEVO ESTADO: MODO PRIVACIDAD ---
+  const [isPrivate, setIsPrivate] = useState(false);
+  const mask = (val) => isPrivate ? '••••••' : fmt.format(val);
 
   const [showIncomesHistory, setShowIncomesHistory] = useState(false);
   const [showExpensesHistory, setShowExpensesHistory] = useState(false);
@@ -73,12 +94,38 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
+  // Datos mes actual
   const filteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(selectedMonth)), [incomes, selectedMonth]);
   const filteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(selectedMonth)), [expenses, selectedMonth]);
 
   const monthIncomeTotal = filteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
   const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
+
+  // --- NUEVA LÓGICA: CÁLCULOS MES ANTERIOR PARA TENDENCIAS ---
+  const prevMonthStr = useMemo(() => {
+    const [y, m] = selectedMonth.split('-');
+    const d = new Date(y, parseInt(m) - 1, 1);
+    d.setMonth(d.getMonth() - 1); // Restamos un mes
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [selectedMonth]);
+
+  const prevFilteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(prevMonthStr)), [incomes, prevMonthStr]);
+  const prevFilteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(prevMonthStr)), [expenses, prevMonthStr]);
+
+  const prevMonthIncomeTotal = prevFilteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
+  const prevMonthExpenseTotal = prevFilteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const prevMonthNetFlow = prevMonthIncomeTotal - prevMonthExpenseTotal;
+
+  const calcTrend = (current, prev) => {
+    if (prev === 0) return 0; // Evitar división por cero
+    return ((current - prev) / Math.abs(prev)) * 100;
+  };
+
+  const incomeTrend = calcTrend(monthIncomeTotal, prevMonthIncomeTotal);
+  const expenseTrend = calcTrend(monthExpenseTotal, prevMonthExpenseTotal);
+  const flowTrend = calcTrend(monthNetFlow, prevMonthNetFlow);
+  // -------------------------------------------------------------
 
   const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
   const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
@@ -114,11 +161,10 @@ export default function App() {
       .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
-  // --- FUNCIÓN CORREGIDA: GENERAR Y EXPORTAR PDF ---
+  // Generar PDF (No usa "mask" porque el PDF siempre debe llevar datos reales)
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF();
-      
       doc.setFontSize(22);
       doc.setTextColor(20, 20, 20);
       doc.text('WealthPulse', 14, 22);
@@ -131,7 +177,6 @@ export default function App() {
       doc.setTextColor(0, 0, 0);
       doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
       
-      // Uso correcto de autoTable 
       autoTable(doc, {
         startY: 50,
         head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
@@ -207,7 +252,6 @@ export default function App() {
     }
   };
 
-  // --- VALIDACIONES Y CRUD ---
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(incomeForm.amount);
@@ -304,7 +348,7 @@ export default function App() {
           <p className="text-neutral-400 text-xs mb-1.5 font-semibold">Día {label}</p>
           {payload.map((entry, index) => (
             <p key={index} className={`text-sm font-mono font-bold ${entry.dataKey === 'ingresos' ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {entry.dataKey === 'ingresos' ? '+' : '-'}{fmt.format(entry.value)}
+              {entry.dataKey === 'ingresos' ? '+' : '-'}{mask(entry.value)}
             </p>
           ))}
         </div>
@@ -319,7 +363,7 @@ export default function App() {
         <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl">
           <p className="text-neutral-400 text-xs mb-1 font-semibold">{payload[0].name}</p>
           <p className="text-sm font-mono font-bold text-white">
-            {fmt.format(payload[0].value)}
+            {mask(payload[0].value)}
           </p>
         </div>
       );
@@ -339,9 +383,8 @@ export default function App() {
     <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans transition-colors duration-500 relative">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-28 lg:pb-8">
         
-        {/* CABECERA (HEADER) RESPONSIVE CORREGIDA */}
+        {/* CABECERA */}
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-neutral-800/80 pb-6">
-          
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-900 shadow-xl flex-shrink-0">
               <Icon.Pulse className="h-6 w-6 text-emerald-400" />
@@ -361,6 +404,7 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+            {/* Selector de Mes */}
             <div className="flex items-center flex-1 sm:flex-none bg-neutral-900/60 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
               <input 
                 type="month" 
@@ -369,19 +413,37 @@ export default function App() {
                 onChange={(e) => setSelectedMonth(e.target.value)} 
               />
             </div>
+
+            {/* BOTÓN MODO PRIVACIDAD */}
+            <button 
+              onClick={() => setIsPrivate(!isPrivate)}
+              className={`flex items-center justify-center p-2.5 rounded-xl transition-all shadow-md active:scale-95 border ${isPrivate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 border-neutral-700/50'}`}
+              title={isPrivate ? "Mostrar montos" : "Ocultar montos"}
+            >
+              {isPrivate ? (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </button>
+
+            {/* BOTÓN EXPORTAR */}
             <button 
               onClick={handleExportPDF}
-              className="flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md active:scale-95 border border-neutral-700/50"
+              className="flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md active:scale-95 border border-neutral-700/50"
               title="Descargar Estado de Cuenta en PDF"
             >
-              <svg className="w-4 h-4 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span className="hidden sm:inline">Exportar</span>
-              <span className="sm:hidden uppercase">PDF</span>
             </button>
           </div>
-
         </header>
 
         {/* --- CAPITAL TOTAL HISTÓRICO --- */}
@@ -390,20 +452,20 @@ export default function App() {
              Patrimonio Total Acumulado
           </h2>
           <div className="flex items-center justify-center gap-2 mt-4">
-            <p className="text-5xl sm:text-6xl font-bold text-white tracking-tighter">
-              {fmt.format(capitalTotal)}
+            <p className={`text-5xl sm:text-6xl font-bold tracking-tighter ${isPrivate ? 'text-neutral-600' : 'text-white'}`}>
+              {mask(capitalTotal)}
             </p>
           </div>
           
           <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-10 border-t border-neutral-800/50 pt-5">
             <div className="flex flex-col items-center">
               <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Ahorrado en Metas</span>
-              <span className="text-sm font-semibold text-emerald-400">{fmt.format(totalSavedInGoals)}</span>
+              <span className="text-sm font-semibold text-emerald-400">{mask(totalSavedInGoals)}</span>
             </div>
             <div className="w-px h-8 bg-neutral-800/80"></div>
             <div className="flex flex-col items-center">
               <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Capital Libre</span>
-              <span className="text-sm font-semibold text-neutral-300">{fmt.format(availableCash)}</span>
+              <span className="text-sm font-semibold text-neutral-300">{mask(availableCash)}</span>
             </div>
           </div>
         </div>
@@ -412,17 +474,35 @@ export default function App() {
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
           
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl">
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Ingresos Neto</p>
-              <p className="font-mono text-4xl font-semibold text-emerald-400 tracking-tight">{fmt.format(monthIncomeTotal)}</p>
+            {/* TARJETAS CON INDICADORES DE RENDIMIENTO */}
+            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Ingresos Neto</p>
+                <TrendBadge value={incomeTrend} />
+              </div>
+              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
+                {mask(monthIncomeTotal)}
+              </p>
             </div>
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl">
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Gastos</p>
-              <p className="font-mono text-4xl font-semibold text-rose-400 tracking-tight">{fmt.format(monthExpenseTotal)}</p>
+            
+            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Gastos</p>
+                <TrendBadge value={expenseTrend} invertColors={true} />
+              </div>
+              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>
+                {mask(monthExpenseTotal)}
+              </p>
             </div>
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl">
-              <p className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Flujo Mensual</p>
-              <p className={`font-mono text-4xl font-semibold tracking-tight ${monthNetFlow >= 0 ? 'text-white' : 'text-rose-500'}`}>{fmt.format(monthNetFlow)}</p>
+
+            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Flujo Mensual</p>
+                <TrendBadge value={flowTrend} />
+              </div>
+              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : (monthNetFlow >= 0 ? 'text-white' : 'text-rose-500')}`}>
+                {mask(monthNetFlow)}
+              </p>
             </div>
           </div>
 
@@ -488,7 +568,7 @@ export default function App() {
                               <span className="text-xs font-medium text-neutral-300">{item.name}</span>
                             </div>
                             <div className="flex items-center gap-3 font-mono text-xs">
-                              <span className="text-neutral-400">{fmt.format(item.value)}</span>
+                              <span className="text-neutral-400">{mask(item.value)}</span>
                               <span className="text-white font-bold w-9 text-right bg-neutral-900 px-1.5 py-0.5 rounded">{pct}%</span>
                             </div>
                           </div>
@@ -575,11 +655,13 @@ export default function App() {
                             </p>
                             <div className="flex gap-2 items-center mt-1">
                               <span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(i.date)}</span>
-                              {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: ${i.amount} | Insumo: -${i.cost}</span>}
+                              {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: {mask(i.amount)}</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
-                            <span className="font-mono text-[15px] font-semibold text-emerald-400">+{fmt.format(net)}</span>
+                            <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
+                              +{mask(net)}
+                            </span>
                             <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
                               <button onClick={() => setIncomeForm(i)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
                               <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
@@ -646,7 +728,9 @@ export default function App() {
                           <div className="mt-1"><span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(e.date)}</span></div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="font-mono text-[15px] font-semibold text-rose-400">-{fmt.format(e.amount)}</span>
+                          <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>
+                            -{mask(e.amount)}
+                          </span>
                           <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
                             <button onClick={() => setExpenseForm(e)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
                             <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
@@ -733,7 +817,7 @@ export default function App() {
                       <div className="flex flex-col gap-1">
                         <span className="text-neutral-500 text-xs">Progreso</span>
                         <span className="text-neutral-100 text-lg font-medium">
-                          {fmt.format(saved)} <span className="text-neutral-600 text-sm font-normal">/ {fmt.format(target)}</span>
+                          {mask(saved)} <span className="text-neutral-600 text-sm font-normal">/ {mask(target)}</span>
                         </span>
                       </div>
                       <span className="text-emerald-400 font-bold text-xl">{pct.toFixed(0)}%</span>
@@ -749,8 +833,8 @@ export default function App() {
                           <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider flex items-center gap-1">
                             <Icon.Target className="h-3 w-3 text-emerald-500" /> Meta Semanal
                           </span>
-                          <span className="text-emerald-400 font-mono text-sm mt-0.5 font-bold">
-                            {fmt.format(weeklyNeeded)}<span className="text-neutral-500 text-[10px] font-sans"> x {weeksLeft} sem</span>
+                          <span className={`font-mono text-sm mt-0.5 font-bold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
+                            {mask(weeklyNeeded)}<span className="text-neutral-500 text-[10px] font-sans"> x {weeksLeft} sem</span>
                           </span>
                         </div>
                         <button onClick={() => handleAddFundsClick(g)} className="text-xs font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 px-4 py-2.5 rounded-xl transition-all active:scale-95">
