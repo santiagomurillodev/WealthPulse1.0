@@ -37,7 +37,7 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- ESTILOS GLOBALES --- */
+/* --- ESTILOS GLOBALES (Corrección de Scroll y Fechas en iOS) --- */
 const GlobalStyles = () => (
   <style>{`
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -46,10 +46,16 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
     
-    /* Solución iOS Safari para inputs */
+    /* Forzar alineación izquierda estricta en iOS Safari para fechas */
     input[type="date"], input[type="month"] {
       text-align: left !important;
-      justify-content: flex-start !important;
+      -webkit-appearance: none;
+      display: block;
+      width: 100%;
+    }
+    input[type="date"]::-webkit-date-and-time-value, 
+    input[type="month"]::-webkit-date-and-time-value {
+      text-align: left !important;
     }
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="month"]::-webkit-calendar-picker-indicator {
@@ -139,15 +145,12 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
-  // LOGICA PIN (ACELERADA - Sin retrasos molestos)
+  // LOGICA PIN
   const handlePinPress = useCallback((digit) => {
     if (enteredPin.length < 4) {
       const newPin = enteredPin + digit;
       setEnteredPin(newPin);
-      if (newPin.length === 4) {
-        // Se ejecuta casi al instante, dando 10ms solo para que React dibuje el 4to punto visualmente
-        setTimeout(() => processPin(newPin), 10);
-      }
+      if (newPin.length === 4) setTimeout(() => processPin(newPin), 10);
     }
   }, [enteredPin, pinSetupStep, tempPin, savedPin]);
 
@@ -286,14 +289,65 @@ export default function App() {
     setFundModal({ isOpen: false, goal: null, amount: '' });
   };
 
+  // SOLUCIÓN PDF: Restauradas las 4 tablas detalladas
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF();
-      doc.setFontSize(22); doc.text('WealthPulse', 14, 22); doc.setFontSize(14); doc.text(`Reporte - ${selectedMonth}`, 14, 30);
-      autoTable(doc, { startY: 40, head: [['Patrimonio', 'Ahorrado', 'Libre']], body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]] });
-      autoTable(doc, { head: [['Ingresos', 'Gastos', 'Flujo Neto']], body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]] });
+      
+      // Cabecera Documento
+      doc.setFontSize(22); doc.setTextColor(20, 20, 20); doc.text('WealthPulse', 14, 22);
+      doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
+      
+      // Tabla 1: Patrimonio Global
+      doc.setFontSize(12); doc.setTextColor(0, 0, 0); doc.text('1. PATRIMONIO GLOBAL', 14, 45);
+      autoTable(doc, {
+        startY: 50, 
+        head: [['Capital Total', 'Ahorrado en Metas', 'Capital Libre']],
+        body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
+        theme: 'grid', headStyles: { fillColor: [52, 199, 89], textColor: [255, 255, 255] }, styles: { fontSize: 10, halign: 'center' }
+      });
+
+      // Tabla 2: Flujo Mensual
+      let finalY = doc.lastAutoTable.finalY + 15;
+      doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
+      autoTable(doc, {
+        startY: finalY + 5, 
+        head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto']],
+        body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
+        theme: 'grid', headStyles: { fillColor: [28, 28, 30], textColor: [255, 255, 255] }, styles: { fontSize: 10, halign: 'center' }
+      });
+
+      // Tabla 3: Historial Ingresos
+      finalY = doc.lastAutoTable.finalY + 15;
+      doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
+      const ingresosRows = filteredIncomes.map(i => [
+        i.date, i.category, i.note || '-', fmt.format(i.amount),
+        Number(i.cost) > 0 ? fmt.format(i.cost) : '-', fmt.format(Number(i.amount) - (Number(i.cost) || 0))
+      ]);
+      autoTable(doc, {
+        startY: finalY + 5, 
+        head: [['Fecha', 'Categoría', 'Nota', 'Cobro Bruto', 'Costo', 'Neto']],
+        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin ingresos registrados', '-', '-', '-']],
+        theme: 'striped', headStyles: { fillColor: [52, 199, 89] }, styles: { fontSize: 9 }
+      });
+
+      // Tabla 4: Historial Gastos
+      finalY = doc.lastAutoTable.finalY + 15;
+      if (finalY > 250) { doc.addPage(); finalY = 20; }
+      doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
+      const gastosRows = filteredExpenses.map(e => [e.date, e.category, e.note || '-', fmt.format(e.amount)]);
+      autoTable(doc, {
+        startY: finalY + 5, 
+        head: [['Fecha', 'Categoría', 'Nota', 'Monto']],
+        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin gastos registrados', '-']],
+        theme: 'striped', headStyles: { fillColor: [255, 59, 48] }, styles: { fontSize: 9 }
+      });
+
       doc.save(`WealthPulse_${selectedMonth}.pdf`);
-    } catch (error) { alert("Error al exportar PDF."); }
+    } catch (error) { 
+      console.error(error);
+      alert("Error al exportar el PDF. Revisa los permisos."); 
+    }
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -316,7 +370,7 @@ export default function App() {
   if (!isAuthenticated) {
     let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
         <GlobalStyles />
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -346,14 +400,14 @@ export default function App() {
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
         <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -373,13 +427,13 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
       <GlobalStyles />
       
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -390,7 +444,7 @@ export default function App() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        {/* CABECERA ALINEADA */}
+        {/* CABECERA */}
         <header className="flex flex-col gap-6 mb-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -412,7 +466,6 @@ export default function App() {
 
           <div className="flex flex-row items-center gap-3 w-full sm:justify-end">
             <div className="relative flex items-center bg-black/20 backdrop-blur-xl border border-white/10 rounded-[16px] px-4 py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] flex-1 sm:flex-none sm:w-auto w-full">
-              {/* Solución 1: Extraer solo YYYY-MM para que no falle al filtrar en iOS */}
               <input 
                 type="month" 
                 className="w-full bg-transparent text-[15px] font-semibold text-white outline-none cursor-pointer" 
@@ -446,7 +499,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: RESUMEN (Solución 2: Cifras balanceadas) */}
+        {/* PESTAÑA: RESUMEN */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
@@ -475,7 +528,6 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Solución 3: Barras verdes restauradas sin gradientes que fallen en iOS */}
             <GlassCard className="lg:col-span-2 p-6">
               <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Tendencia del Mes</h3>
               <div className="h-64 w-full">
@@ -523,7 +575,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: TRANSACCIONES (Solución 4: Inputs en bloque y acordeón integrado) */}
+        {/* PESTAÑA: TRANSACCIONES (Solución 3: Historial Rediseñado UI) */}
         <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
@@ -546,7 +598,6 @@ export default function App() {
                   </form>
                 </div>
                 
-                {/* Historial completamente integrado en la misma GlassCard */}
                 <div className="border-t border-white/10 bg-white/[0.02]">
                   <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
                     <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Ingresos</h3>
@@ -557,16 +608,22 @@ export default function App() {
                       {filteredIncomes.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredIncomes.map((i) => {
                         const net = Number(i.amount) - (Number(i.cost) || 0);
                         return (
-                          <div key={i.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
-                            <div>
-                              <p className="text-[17px] font-bold text-white/90">{i.category}</p>
-                              <p className="text-[13px] text-white/50">{i.note || formatHumanDate(i.date)}</p>
+                          <div key={i.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-4 sm:p-5 bg-white/[0.03] rounded-[24px] mb-3 border border-white/5 hover:bg-white/[0.08] transition-colors relative">
+                            <div className="flex items-start sm:items-center gap-4 mb-3 sm:mb-0">
+                              <div className="mt-1 sm:mt-0 w-3 h-3 rounded-full shadow-lg flex-shrink-0" style={{ backgroundColor: '#34D399', boxShadow: '0 0 10px #34D399' }}></div>
+                              <div>
+                                <p className="text-[17px] font-bold text-white/90 leading-tight">{i.category}</p>
+                                <p className="text-[13px] text-white/50 mt-0.5">{formatHumanDate(i.date)} {i.note && `• ${i.note}`}</p>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>+{mask(net)}</p>
-                              <div className="flex gap-2">
-                                <button onClick={() => setIncomeForm(i)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
-                                <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                            <div className="flex items-center justify-between sm:justify-end pl-7 sm:pl-0 w-full sm:w-auto gap-4">
+                              <div className="text-left sm:text-right">
+                                <p className={`text-[18px] font-bold ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>+{mask(net)}</p>
+                                {Number(i.cost) > 0 && <p className="text-[11px] text-white/40 font-mono mt-0.5">Costo: {mask(i.cost)}</p>}
+                              </div>
+                              <div className="flex gap-2 border-l border-white/10 pl-4">
+                                <button onClick={() => setIncomeForm(i)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/10 text-white/70 transition-colors"><Icon.Edit className="w-4 h-4"/></button>
+                                <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-2.5 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400 transition-colors"><Icon.Trash className="w-4 h-4"/></button>
                               </div>
                             </div>
                           </div>
@@ -602,16 +659,21 @@ export default function App() {
                   <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showExpensesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="px-4 pb-4">
                       {filteredExpenses.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredExpenses.map((e) => (
-                        <div key={e.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
-                          <div>
-                            <p className="text-[17px] font-bold text-white/90">{e.category}</p>
-                            <p className="text-[13px] text-white/50">{e.note || formatHumanDate(e.date)}</p>
+                        <div key={e.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-4 sm:p-5 bg-white/[0.03] rounded-[24px] mb-3 border border-white/5 hover:bg-white/[0.08] transition-colors relative">
+                          <div className="flex items-start sm:items-center gap-4 mb-3 sm:mb-0">
+                            <div className="mt-1 sm:mt-0 w-3 h-3 rounded-full shadow-lg flex-shrink-0" style={{ backgroundColor: EXPENSE_COLORS[e.category] || '#8E8E93', boxShadow: `0 0 10px ${EXPENSE_COLORS[e.category] || '#8E8E93'}` }}></div>
+                            <div>
+                              <p className="text-[17px] font-bold text-white/90 leading-tight">{e.category}</p>
+                              <p className="text-[13px] text-white/50 mt-0.5">{formatHumanDate(e.date)} {e.note && `• ${e.note}`}</p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-rose-400'}`}>-{mask(e.amount)}</p>
-                            <div className="flex gap-2">
-                              <button onClick={() => setExpenseForm(e)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
-                              <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                          <div className="flex items-center justify-between sm:justify-end pl-7 sm:pl-0 w-full sm:w-auto gap-4">
+                            <div className="text-left sm:text-right">
+                              <p className={`text-[18px] font-bold ${isPrivate ? 'text-white/40' : 'text-rose-400'}`}>-{mask(e.amount)}</p>
+                            </div>
+                            <div className="flex gap-2 border-l border-white/10 pl-4">
+                              <button onClick={() => setExpenseForm(e)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/10 text-white/70 transition-colors"><Icon.Edit className="w-4 h-4"/></button>
+                              <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-2.5 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400 transition-colors"><Icon.Trash className="w-4 h-4"/></button>
                             </div>
                           </div>
                         </div>
@@ -624,7 +686,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: METAS (Solución 6: Restaurar cálculo semanal exacto) */}
+        {/* PESTAÑA: METAS */}
         <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} animate-fade-in`}>
           <GlassCard className="p-6 mb-8">
             <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Planificación</h3>
@@ -673,7 +735,6 @@ export default function App() {
                       <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${pct}%` }}></div>
                     </div>
                     
-                    {/* Cálculo semanal visible */}
                     {remaining > 0 && (
                       <div className="flex justify-between items-center mb-4 bg-black/20 rounded-[16px] p-3 border border-white/5">
                         <div className="flex flex-col">
@@ -694,10 +755,10 @@ export default function App() {
             })}
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* --- NAVEGACIÓN INFERIOR (Solución 5: Reordenada y sin tapar en iPhone) --- */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#000000]/80 backdrop-blur-[60px] border-t border-white/[0.08]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* --- NAVEGACIÓN INFERIOR --- */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-2xl border-t border-white/10" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <ul className="flex justify-around items-center h-[72px] px-2 pt-1">
           <li className="flex-1 flex justify-center">
             <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}>
@@ -717,7 +778,6 @@ export default function App() {
               <span className="text-[10px] font-semibold">Metas</span>
             </button>
           </li>
-          {/* Botón rápido reubicado a la derecha absoluta */}
           <li className="flex-1 flex justify-center">
             <button onClick={() => setIsQuickAddOpen(true)} className="flex flex-col items-center gap-1 transition-all text-emerald-400 active:scale-95">
               <div className="bg-emerald-500/20 rounded-full p-1.5 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
@@ -730,10 +790,10 @@ export default function App() {
       </nav>
 
       {/* --- MODAL GASTO RÁPIDO --- */}
-      <div className={`fixed inset-0 z-[110] transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-50 transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
         
-        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 pb-safe transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
           <div className="w-14 h-1.5 bg-white/20 rounded-full mx-auto mb-8 shadow-inner"></div>
           <h3 className="text-[24px] font-bold text-white tracking-tight mb-8 text-center drop-shadow-md">Gasto Rápido</h3>
           
@@ -758,7 +818,7 @@ export default function App() {
 
       {/* MODALES CLÁSICOS */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
           <GlassCard className="relative z-10 w-full max-w-[320px] p-6 text-center border-t-white/20 border-l-white/20">
             <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
@@ -775,7 +835,7 @@ export default function App() {
       )}
 
       {fundModal.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}></div>
           <GlassCard className="relative z-10 w-full max-w-[340px] p-8 border-t-white/20 border-l-white/20">
             <h3 className="text-[22px] font-bold text-white mb-2 text-center drop-shadow-md">Abonar Fondos</h3>
@@ -793,6 +853,6 @@ export default function App() {
           </GlassCard>
         </div>
       )}
-    </div>
+    </main>
   );
 }
