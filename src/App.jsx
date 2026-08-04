@@ -37,7 +37,7 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- ESTILOS GLOBALES (Corrección de Scroll y Fechas) --- */
+/* --- ESTILOS GLOBALES --- */
 const GlobalStyles = () => (
   <style>{`
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -46,7 +46,7 @@ const GlobalStyles = () => (
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
     
-    /* Forzar alineación izquierda en iPhone para inputs de fecha y mes */
+    /* Solución iOS Safari para inputs */
     input[type="date"], input[type="month"] {
       text-align: left !important;
       justify-content: flex-start !important;
@@ -139,12 +139,15 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
-  // LOGICA PIN
+  // LOGICA PIN (ACELERADA - Sin retrasos molestos)
   const handlePinPress = useCallback((digit) => {
     if (enteredPin.length < 4) {
       const newPin = enteredPin + digit;
       setEnteredPin(newPin);
-      if (newPin.length === 4) setTimeout(() => processPin(newPin), 150);
+      if (newPin.length === 4) {
+        // Se ejecuta casi al instante, dando 10ms solo para que React dibuje el 4to punto visualmente
+        setTimeout(() => processPin(newPin), 10);
+      }
     }
   }, [enteredPin, pinSetupStep, tempPin, savedPin]);
 
@@ -163,7 +166,7 @@ export default function App() {
 
   const triggerPinError = () => {
     setPinError(true);
-    setTimeout(() => { setEnteredPin(''); setPinError(false); }, 500);
+    setTimeout(() => { setEnteredPin(''); setPinError(false); }, 400);
   };
 
   // DATOS MATEMÁTICOS Y FILTROS
@@ -309,11 +312,11 @@ export default function App() {
     return null;
   };
 
-  // --- RENDER 1: PANTALLA PIN (LIMPIA SIN CAPSULA) ---
+  // --- RENDER 1: PANTALLA PIN ---
   if (!isAuthenticated) {
     let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
         <GlobalStyles />
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -343,14 +346,14 @@ export default function App() {
             </button>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
         <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -370,13 +373,13 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
       <GlobalStyles />
       
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -409,11 +412,12 @@ export default function App() {
 
           <div className="flex flex-row items-center gap-3 w-full sm:justify-end">
             <div className="relative flex items-center bg-black/20 backdrop-blur-xl border border-white/10 rounded-[16px] px-4 py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] flex-1 sm:flex-none sm:w-auto w-full">
+              {/* Solución 1: Extraer solo YYYY-MM para que no falle al filtrar en iOS */}
               <input 
                 type="month" 
                 className="w-full bg-transparent text-[15px] font-semibold text-white outline-none cursor-pointer" 
                 value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(e.target.value)} 
+                onChange={(e) => setSelectedMonth(e.target.value.slice(0, 7))} 
               />
             </div>
             <GlassButton variant="glass" className="!w-auto !p-3 !rounded-[16px]" onClick={() => setIsPrivate(!isPrivate)}>
@@ -442,7 +446,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: RESUMEN */}
+        {/* PESTAÑA: RESUMEN (Solución 2: Cifras balanceadas) */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
@@ -471,6 +475,7 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Solución 3: Barras verdes restauradas sin gradientes que fallen en iOS */}
             <GlassCard className="lg:col-span-2 p-6">
               <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Tendencia del Mes</h3>
               <div className="h-64 w-full">
@@ -518,7 +523,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: TRANSACCIONES */}
+        {/* PESTAÑA: TRANSACCIONES (Solución 4: Inputs en bloque y acordeón integrado) */}
         <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
@@ -541,6 +546,7 @@ export default function App() {
                   </form>
                 </div>
                 
+                {/* Historial completamente integrado en la misma GlassCard */}
                 <div className="border-t border-white/10 bg-white/[0.02]">
                   <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
                     <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Ingresos</h3>
@@ -618,7 +624,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: METAS */}
+        {/* PESTAÑA: METAS (Solución 6: Restaurar cálculo semanal exacto) */}
         <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} animate-fade-in`}>
           <GlassCard className="p-6 mb-8">
             <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Planificación</h3>
@@ -667,6 +673,7 @@ export default function App() {
                       <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${pct}%` }}></div>
                     </div>
                     
+                    {/* Cálculo semanal visible */}
                     {remaining > 0 && (
                       <div className="flex justify-between items-center mb-4 bg-black/20 rounded-[16px] p-3 border border-white/5">
                         <div className="flex flex-col">
@@ -688,6 +695,104 @@ export default function App() {
           </div>
         </div>
       </div>
-    </main>
+
+      {/* --- NAVEGACIÓN INFERIOR (Solución 5: Reordenada y sin tapar en iPhone) --- */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#000000]/80 backdrop-blur-[60px] border-t border-white/[0.08]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <ul className="flex justify-around items-center h-[72px] px-2 pt-1">
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Home className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Resumen</span>
+            </button>
+          </li>
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transacciones' ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Wallet className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Tracker</span>
+            </button>
+          </li>
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'metas' ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Target className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Metas</span>
+            </button>
+          </li>
+          {/* Botón rápido reubicado a la derecha absoluta */}
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setIsQuickAddOpen(true)} className="flex flex-col items-center gap-1 transition-all text-emerald-400 active:scale-95">
+              <div className="bg-emerald-500/20 rounded-full p-1.5 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+                <Icon.Plus className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-semibold">Rápido</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      {/* --- MODAL GASTO RÁPIDO --- */}
+      <div className={`fixed inset-0 z-[110] transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
+        
+        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 pb-safe transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="w-14 h-1.5 bg-white/20 rounded-full mx-auto mb-8 shadow-inner"></div>
+          <h3 className="text-[24px] font-bold text-white tracking-tight mb-8 text-center drop-shadow-md">Gasto Rápido</h3>
+          
+          <form onSubmit={handleQuickExpense} className="flex flex-col gap-5 max-w-sm mx-auto mb-6">
+            <div className="relative">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 text-[24px] font-light">$</span>
+              <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-2xl border border-white/10 rounded-[24px] px-6 py-6 pl-12 text-[36px] font-bold text-white outline-none focus:border-rose-500/50 shadow-inner" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
+            </div>
+
+            <GlassSelect className="!py-5 !rounded-[24px] !text-[18px]" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
+              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </GlassSelect>
+
+            <GlassInput className="!py-5 !rounded-[24px] !text-[18px]" type="text" placeholder="Nota opcional" value={qNote} onChange={(e) => setQNote(e.target.value)} />
+            
+            <GlassButton type="submit" variant="danger" className="!py-5 !rounded-[24px] !text-[18px] mt-4 shadow-[0_0_30px_rgba(244,63,94,0.4)]">
+              Confirmar Gasto
+            </GlassButton>
+          </form>
+        </div>
+      </div>
+
+      {/* MODALES CLÁSICOS */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
+          <GlassCard className="relative z-10 w-full max-w-[320px] p-6 text-center border-t-white/20 border-l-white/20">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
+              <Icon.Warning className="w-8 h-8 text-rose-400" />
+            </div>
+            <h3 className="text-[20px] font-bold text-white mb-2">¿Eliminar Registro?</h3>
+            <p className="text-[15px] text-white/50 mb-8">Esta acción es permanente y se borrará de la base de datos.</p>
+            <div className="flex gap-3">
+              <GlassButton variant="glass" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}>Cancelar</GlassButton>
+              <GlassButton variant="danger" onClick={confirmDelete}>Eliminar</GlassButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {fundModal.isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}></div>
+          <GlassCard className="relative z-10 w-full max-w-[340px] p-8 border-t-white/20 border-l-white/20">
+            <h3 className="text-[22px] font-bold text-white mb-2 text-center drop-shadow-md">Abonar Fondos</h3>
+            <p className="text-[15px] text-white/50 mb-6 text-center">Para: <span className="text-white font-semibold">{fundModal.goal?.name}</span></p>
+            <form onSubmit={confirmAddFunds} className="space-y-6">
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 text-[20px] font-light">$</span>
+                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-xl border border-white/10 rounded-[20px] px-5 py-5 pl-10 text-[28px] font-bold text-emerald-400 outline-none focus:border-emerald-500/50 shadow-inner" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
+              </div>
+              <div className="flex gap-3">
+                <GlassButton variant="glass" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}>Cancelar</GlassButton>
+                <GlassButton type="submit" variant="primary">Abonar</GlassButton>
+              </div>
+            </form>
+          </GlassCard>
+        </div>
+      )}
+    </div>
   );
 }
