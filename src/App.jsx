@@ -37,7 +37,7 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- ESTILOS GLOBALES (Fix de bandas laterales en PC y Fechas en iOS) --- */
+/* --- ESTILOS GLOBALES (Corrección de Scroll y Fechas en iOS) --- */
 const GlobalStyles = () => (
   <style>{`
     /* RESET AGRESIO VITE: Elimina las bandas laterales grises en PC */
@@ -443,7 +443,7 @@ export default function App() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        {/* CABECERA */}
+        {/* CABECERA ALINEADA */}
         <header className="flex flex-col gap-6 mb-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -852,6 +852,6 @@ export default function App() {
           </GlassCard>
         </div>
       )}
-    </div>
+    </main>
   );
 }
