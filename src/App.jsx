@@ -387,7 +387,7 @@ export default function App() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        {/* CABECERA (Solución al selector de Mes y Tabs de Escritorio) */}
+        {/* CABECERA ALINEADA */}
         <header className="flex flex-col gap-6 mb-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -442,7 +442,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: RESUMEN (Solución al descuadre de cifras a la izquierda) */}
+        {/* PESTAÑA: RESUMEN */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
@@ -471,7 +471,6 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Solución a las barras verdes del gráfico que no se veían */}
             <GlassCard className="lg:col-span-2 p-6">
               <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Tendencia del Mes</h3>
               <div className="h-64 w-full">
@@ -519,7 +518,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: TRANSACCIONES (Solución de formularios compactos y acordeón interno) */}
+        {/* PESTAÑA: TRANSACCIONES */}
         <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} animate-fade-in`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
@@ -542,7 +541,6 @@ export default function App() {
                   </form>
                 </div>
                 
-                {/* Historial Integrado */}
                 <div className="border-t border-white/10 bg-white/[0.02]">
                   <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
                     <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Ingresos</h3>
@@ -590,7 +588,6 @@ export default function App() {
                   </form>
                 </div>
                 
-                {/* Historial Integrado */}
                 <div className="border-t border-white/10 bg-white/[0.02]">
                   <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
                     <h3 className="text-[14px] font-bold text-white uppercase tracking-widest">Ver Historial de Gastos</h3>
@@ -621,7 +618,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* PESTAÑA: METAS (Solución de matemáticas semanales restaurada) */}
+        {/* PESTAÑA: METAS */}
         <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} animate-fade-in`}>
           <GlassCard className="p-6 mb-8">
             <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Planificación</h3>
@@ -643,7 +640,6 @@ export default function App() {
               const pct = Math.min(100, (saved / target) * 100);
               const remaining = target - saved;
 
-              // Matemáticas restauradas para Meta Semanal
               const d1 = new Date();
               const d2 = new Date(g.deadline + 'T00:00:00');
               const msPerWeek = 1000 * 60 * 60 * 24 * 7;
@@ -671,7 +667,6 @@ export default function App() {
                       <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${pct}%` }}></div>
                     </div>
                     
-                    {/* Visualización de la Meta Semanal */}
                     {remaining > 0 && (
                       <div className="flex justify-between items-center mb-4 bg-black/20 rounded-[16px] p-3 border border-white/5">
                         <div className="flex flex-col">
@@ -692,105 +687,7 @@ export default function App() {
             })}
           </div>
         </div>
-      </main>
-
-      {/* --- NAVEGACIÓN INFERIOR (Reordenado: Resumen, Tracker, Metas, Rápido) --- */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/60 backdrop-blur-2xl border-t border-white/10">
-        <ul className="flex justify-around items-center h-[84px] pb-safe pt-2 px-2">
-          <li className="flex-1 flex justify-center">
-            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
-              <Icon.Home className="w-6 h-6" />
-              <span className="text-[10px] font-semibold">Resumen</span>
-            </button>
-          </li>
-          <li className="flex-1 flex justify-center">
-            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transacciones' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
-              <Icon.Wallet className="w-6 h-6" />
-              <span className="text-[10px] font-semibold">Tracker</span>
-            </button>
-          </li>
-          <li className="flex-1 flex justify-center">
-            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'metas' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
-              <Icon.Target className="w-6 h-6" />
-              <span className="text-[10px] font-semibold">Metas</span>
-            </button>
-          </li>
-          {/* Botón rápido ahora está en la esquina derecha */}
-          <li className="flex-1 flex justify-center">
-            <button onClick={() => setIsQuickAddOpen(true)} className="flex flex-col items-center gap-1 transition-all text-emerald-400 active:scale-95">
-              <div className="bg-emerald-500/20 rounded-full p-1.5 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
-                <Icon.Plus className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-semibold">Rápido</span>
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      {/* --- MODAL GASTO RÁPIDO --- */}
-      <div className={`fixed inset-0 z-50 transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
-        
-        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 pb-safe transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="w-14 h-1.5 bg-white/20 rounded-full mx-auto mb-8 shadow-inner"></div>
-          <h3 className="text-[24px] font-bold text-white tracking-tight mb-8 text-center drop-shadow-md">Gasto Rápido</h3>
-          
-          <form onSubmit={handleQuickExpense} className="flex flex-col gap-5 max-w-sm mx-auto">
-            <div className="relative">
-              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 text-[24px] font-light">$</span>
-              <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-2xl border border-white/10 rounded-[24px] px-6 py-6 pl-12 text-[36px] font-bold text-white outline-none focus:border-rose-500/50 shadow-inner" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
-            </div>
-
-            <GlassSelect className="!py-5 !rounded-[24px] !text-[18px]" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
-              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </GlassSelect>
-
-            <GlassInput className="!py-5 !rounded-[24px] !text-[18px]" type="text" placeholder="Nota opcional" value={qNote} onChange={(e) => setQNote(e.target.value)} />
-            
-            <GlassButton type="submit" variant="danger" className="!py-5 !rounded-[24px] !text-[18px] mt-4 shadow-[0_0_30px_rgba(244,63,94,0.4)]">
-              Confirmar Gasto
-            </GlassButton>
-          </form>
-        </div>
       </div>
-
-      {/* MODALES CLÁSICOS */}
-      {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
-          <GlassCard className="relative z-10 w-full max-w-[320px] p-6 text-center border-t-white/20 border-l-white/20">
-            <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
-              <Icon.Warning className="w-8 h-8 text-rose-400" />
-            </div>
-            <h3 className="text-[20px] font-bold text-white mb-2">¿Eliminar Registro?</h3>
-            <p className="text-[15px] text-white/50 mb-8">Esta acción es permanente y se borrará de la base de datos.</p>
-            <div className="flex gap-3">
-              <GlassButton variant="glass" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}>Cancelar</GlassButton>
-              <GlassButton variant="danger" onClick={confirmDelete}>Eliminar</GlassButton>
-            </div>
-          </GlassCard>
-        </div>
-      )}
-
-      {fundModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}></div>
-          <GlassCard className="relative z-10 w-full max-w-[340px] p-8 border-t-white/20 border-l-white/20">
-            <h3 className="text-[22px] font-bold text-white mb-2 text-center drop-shadow-md">Abonar Fondos</h3>
-            <p className="text-[15px] text-white/50 mb-6 text-center">Para: <span className="text-white font-semibold">{fundModal.goal?.name}</span></p>
-            <form onSubmit={confirmAddFunds} className="space-y-6">
-              <div className="relative">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 text-[20px] font-light">$</span>
-                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-xl border border-white/10 rounded-[20px] px-5 py-5 pl-10 text-[28px] font-bold text-emerald-400 outline-none focus:border-emerald-500/50 shadow-inner" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
-              </div>
-              <div className="flex gap-3">
-                <GlassButton variant="glass" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}>Cancelar</GlassButton>
-                <GlassButton type="submit" variant="primary">Abonar</GlassButton>
-              </div>
-            </form>
-          </GlassCard>
-        </div>
-      )}
     </main>
   );
 }
