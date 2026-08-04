@@ -37,9 +37,19 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- ESTILOS GLOBALES (Corrección de Scroll y Fechas en iOS) --- */
+/* --- ESTILOS GLOBALES (Fix de bandas laterales en PC y Fechas en iOS) --- */
 const GlobalStyles = () => (
   <style>{`
+    /* RESET AGRESIO VITE: Elimina las bandas laterales grises en PC */
+    html, body, #root {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      background-color: #000000 !important;
+      overflow-x: hidden;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
@@ -359,7 +369,7 @@ export default function App() {
   if (!isAuthenticated) {
     let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
         <GlobalStyles />
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -389,14 +399,14 @@ export default function App() {
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
         <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -416,13 +426,13 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
       <GlobalStyles />
       
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -431,7 +441,6 @@ export default function App() {
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
       </div>
 
-      {/* ENVOLTORIO PRINCIPAL QUE CONTIENE TODA LA APP */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
         {/* CABECERA */}
@@ -748,7 +757,7 @@ export default function App() {
       </div>
 
       {/* --- NAVEGACIÓN INFERIOR --- */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#000000]/80 backdrop-blur-[60px] border-t border-white/[0.08]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-2xl border-t border-white/10" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <ul className="flex justify-around items-center h-[72px] px-2 pt-1">
           <li className="flex-1 flex justify-center">
             <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}>
@@ -780,10 +789,10 @@ export default function App() {
       </nav>
 
       {/* --- MODAL GASTO RÁPIDO --- */}
-      <div className={`fixed inset-0 z-[110] transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-50 transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
         
-        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 pb-safe transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}>
           <div className="w-14 h-1.5 bg-white/20 rounded-full mx-auto mb-8 shadow-inner"></div>
           <h3 className="text-[24px] font-bold text-white tracking-tight mb-8 text-center drop-shadow-md">Gasto Rápido</h3>
           
@@ -808,7 +817,7 @@ export default function App() {
 
       {/* MODALES CLÁSICOS */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
           <GlassCard className="relative z-10 w-full max-w-[320px] p-6 text-center border-t-white/20 border-l-white/20">
             <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
@@ -825,7 +834,7 @@ export default function App() {
       )}
 
       {fundModal.isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}></div>
           <GlassCard className="relative z-10 w-full max-w-[340px] p-8 border-t-white/20 border-l-white/20">
             <h3 className="text-[22px] font-bold text-white mb-2 text-center drop-shadow-md">Abonar Fondos</h3>
