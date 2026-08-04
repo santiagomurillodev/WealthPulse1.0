@@ -11,12 +11,22 @@ const INCOME_CATEGORIES = ['Salario Base', 'Reparaciones', 'Ventas', 'Extra'];
 const EXPENSE_CATEGORIES = ['Comida', 'Servicios', 'Insumos Taller/Refacciones', 'Transporte', 'Gustos'];
 const STORAGE_OPTIONS = ['Tarjeta', 'Efectivo', 'Cuenta de Ahorro', 'Inversión'];
 
+const IOS_COLORS = {
+  green: '#34C759',
+  red: '#FF3B30',
+  blue: '#0A84FF',
+  gray: '#8E8E93',
+  bgCard: '#1C1C1E',
+  bgRoot: '#000000',
+  separator: '#38383A'
+};
+
 const EXPENSE_COLORS = {
-  'Comida': '#f59e0b',
-  'Servicios': '#3b82f6',
-  'Insumos Taller/Refacciones': '#06b6d4',
-  'Transporte': '#8b5cf6',
-  'Gustos': '#ec4899'
+  'Comida': '#FF9500', 
+  'Servicios': '#5E5CE6', 
+  'Insumos Taller/Refacciones': '#32ADE6', 
+  'Transporte': '#0A84FF', 
+  'Gustos': '#FF2D55'  
 };
 
 const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
@@ -37,46 +47,47 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-const Section = ({ eyebrow, title, children }) => (
-  <section className="mb-6 rounded-[2rem] border border-neutral-800/40 bg-[#0d0d0d] p-5 sm:p-8 transition-all duration-300 h-full">
-    <div className="mb-5 flex flex-col items-start border-b border-neutral-800/40 pb-4">
-      <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.25em] text-emerald-500/80">{eyebrow}</p>
-      <h2 className="text-xl font-semibold text-neutral-100 tracking-tight">{title}</h2>
+/* --- COMPONENTES UI ESTILO NATIVO DE iOS --- */
+const IOSSection = ({ eyebrow, children }) => (
+  <div className="mb-6 w-full">
+    {eyebrow && <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">{eyebrow}</h2>}
+    <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
+      {children}
     </div>
-    {children}
-  </section>
+  </div>
 );
 
-const Field = ({ label, children }) => (
-  <label className="block w-full">
-    <span className="mb-1.5 block text-[11px] font-semibold tracking-widest text-neutral-500 uppercase">{label}</span>
-    {children}
-  </label>
+const IOSRow = ({ label, children, isLast = false, rightAlign = false }) => (
+  <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#1C1C1E] ${!isLast ? 'border-b border-[#38383A]' : ''} min-h-[54px]`}>
+    <span className="text-[17px] text-white w-full sm:w-1/3 mb-1 sm:mb-0 font-medium">{label}</span>
+    <div className={`w-full sm:w-2/3 ${rightAlign ? 'text-right' : ''}`}>
+      {children}
+    </div>
+  </div>
 );
 
 const TrendBadge = ({ value, invertColors = false }) => {
   if (value === 0 || isNaN(value)) {
-    return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-neutral-500 bg-neutral-800/50 uppercase tracking-wide">≈ 0% vs mes ant.</span>;
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg text-[#8E8E93] bg-[#2C2C2E]">≈ 0%</span>;
   }
   const isPositive = value > 0;
   const isGood = invertColors ? !isPositive : isPositive;
-  const colorCls = isGood ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10';
+  const colorCls = isGood ? 'text-[#34C759] bg-[#34C759]/10' : 'text-[#FF3B30] bg-[#FF3B30]/10';
   const icon = isPositive ? '↑' : '↓';
   
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 w-max ${colorCls}`}>
-      {icon} {Math.abs(value).toFixed(1)}% <span className="opacity-70 font-medium">vs ant.</span>
+    <span className={`text-[12px] font-bold px-2 py-1 rounded-lg flex items-center gap-0.5 w-max ${colorCls}`}>
+      {icon} {Math.abs(value).toFixed(1)}%
     </span>
   );
 };
 
-const inputCls = 'w-full rounded-2xl border-none bg-neutral-900 px-4 py-3.5 text-[15px] font-medium text-neutral-200 outline-none ring-1 ring-neutral-800 transition-all duration-200 placeholder:text-neutral-600 focus:bg-neutral-800 focus:ring-2 focus:ring-emerald-500/50';
+const inputCls = 'w-full bg-transparent text-[17px] text-white outline-none placeholder:text-[#8E8E93]';
 
 /* ------------------------------- APP PRINCIPAL ------------------------------- */
 export default function App() {
   const { incomes, setIncomes, expenses, setExpenses, goals, setGoals, isLoading } = useFinanceData();
   
-  // --- ESTADOS DE SEGURIDAD (PIN LOCK) ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [savedPin, setSavedPin] = useState(() => localStorage.getItem('wp_pin'));
   const [pinSetupStep, setPinSetupStep] = useState(savedPin ? 'enter' : 'create'); 
@@ -84,16 +95,15 @@ export default function App() {
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
 
-  // --- ESTADOS DE LA APP ---
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
   const [isPrivate, setIsPrivate] = useState(false);
   const mask = (val) => isPrivate ? '••••••' : fmt.format(val);
 
+  // Estados restaurados para los acordeones
   const [showIncomesHistory, setShowIncomesHistory] = useState(false);
   const [showExpensesHistory, setShowExpensesHistory] = useState(false);
 
-  // --- ESTADOS DE GASTO RÁPIDO (BOTTOM SHEET) ---
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [qAmount, setQAmount] = useState('');
   const [qCategory, setQCategory] = useState(EXPENSE_CATEGORIES[0]);
@@ -106,7 +116,6 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
-  // --- LÓGICA DE SEGURIDAD (PIN) ---
   const handlePinPress = useCallback((digit) => {
     if (enteredPin.length < 4) {
       const newPin = enteredPin + digit;
@@ -134,7 +143,7 @@ export default function App() {
       if (currentPin === savedPin) {
         setIsAuthenticated(true);
       } else {
-        triggerPinError('Código incorrecto.', 'enter');
+        triggerPinError('Código incorrecto', 'enter');
       }
     }
   };
@@ -145,10 +154,9 @@ export default function App() {
       setEnteredPin('');
       setPinError(false);
       if (nextStep) setPinSetupStep(nextStep);
-    }, 600);
+    }, 500);
   };
 
-  // --- DATOS FINANCIEROS Y MATEMÁTICAS ---
   const filteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(selectedMonth)), [incomes, selectedMonth]);
   const filteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(selectedMonth)), [expenses, selectedMonth]);
 
@@ -213,30 +221,26 @@ export default function App() {
       .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
-  // --- CRUD FUNCTIONS ---
   const handleQuickExpense = async (e) => {
     e.preventDefault();
     const amount = parseFloat(qAmount);
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
+    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
 
     const { data, error } = await supabase.from('expenses').insert([{ amount, category: qCategory, note: qNote, date: todayISO() }]).select();
     if (!error && data) {
       setExpenses((prev) => [data[0], ...prev]);
       setIsQuickAddOpen(false);
-      setQAmount('');
-      setQNote('');
-      setQCategory(EXPENSE_CATEGORIES[0]);
-    } else {
-      alert("Error al guardar el gasto rápido.");
-    }
+      setQAmount(''); setQNote(''); setQCategory(EXPENSE_CATEGORIES[0]);
+    } else alert("Error al guardar el gasto.");
   };
 
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(incomeForm.amount);
     const cost = parseFloat(incomeForm.cost) || 0;
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
-    if (cost < 0) return alert('El costo del insumo no puede ser negativo.');
+    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
+    if (cost < 0) return alert('Costo inválido.');
+    
     if (incomeForm.id) {
       const { data, error } = await supabase.from('incomes').update({ amount, cost, category: incomeForm.category, note: incomeForm.note, date: incomeForm.date }).eq('id', incomeForm.id).select();
       if (!error && data) setIncomes((prev) => prev.map((i) => (i.id === incomeForm.id ? data[0] : i)));
@@ -250,7 +254,7 @@ export default function App() {
   const saveExpense = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(expenseForm.amount);
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
+    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
     if (expenseForm.id) {
       const { data, error } = await supabase.from('expenses').update({ amount, category: expenseForm.category, note: expenseForm.note, date: expenseForm.date }).eq('id', expenseForm.id).select();
       if (!error && data) setExpenses((prev) => prev.map((ex) => (ex.id === expenseForm.id ? data[0] : ex)));
@@ -265,8 +269,9 @@ export default function App() {
     e.preventDefault();
     const target = parseFloat(goalForm.target);
     const saved = parseFloat(goalForm.saved) || 0;
-    if (isNaN(target) || target <= 0) return alert('La meta debe ser mayor a 0.');
-    if (saved < 0) return alert('El ahorro no puede ser negativo.');
+    if (isNaN(target) || target <= 0) return alert('Meta inválida.');
+    if (saved < 0) return alert('Ahorro inválido.');
+    
     if (goalForm.id) {
       const { data, error } = await supabase.from('goals').update({ name: goalForm.name, target, saved, deadline: goalForm.deadline, storage: goalForm.storage }).eq('id', goalForm.id).select();
       if (!error && data) setGoals((prev) => prev.map((g) => (g.id === goalForm.id ? data[0] : g)));
@@ -289,7 +294,7 @@ export default function App() {
   const confirmAddFunds = async (e) => {
     e.preventDefault();
     const deposit = parseFloat(fundModal.amount);
-    if (isNaN(deposit) || deposit <= 0) return alert('Ingresa un monto válido.');
+    if (isNaN(deposit) || deposit <= 0) return alert('Ingresa un abono válido.');
     const newSavedAmount = Number(fundModal.goal.saved) + deposit;
     const { data, error } = await supabase.from('goals').update({ saved: newSavedAmount }).eq('id', fundModal.goal.id).select();
     if (!error && data) setGoals((prev) => prev.map((g) => (g.id === fundModal.goal.id ? data[0] : g)));
@@ -299,52 +304,34 @@ export default function App() {
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(20, 20, 20);
-      doc.text('WealthPulse', 14, 22);
-      doc.setFontSize(14);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
+      doc.setFontSize(22); doc.setTextColor(20, 20, 20); doc.text('WealthPulse', 14, 22);
+      doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
       
+      doc.setFontSize(12); doc.setTextColor(0, 0, 0); doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
       autoTable(doc, {
-        startY: 50,
-        head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
+        startY: 50, head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
         body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
-        theme: 'grid',
-        headStyles: { fillColor: [52, 211, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 10, halign: 'center' }
+        theme: 'grid', headStyles: { fillColor: [52, 199, 89], textColor: [255, 255, 255], fontStyle: 'bold' }, styles: { fontSize: 10, halign: 'center' }
       });
 
       let finalY = doc.lastAutoTable.finalY + 15;
       doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
-
       autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
+        startY: finalY + 5, head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
         body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
-        theme: 'grid',
-        headStyles: { fillColor: [38, 38, 38], textColor: [255, 255, 255] },
-        styles: { fontSize: 10, halign: 'center' }
+        theme: 'grid', headStyles: { fillColor: [28, 28, 30], textColor: [255, 255, 255] }, styles: { fontSize: 10, halign: 'center' }
       });
 
       finalY = doc.lastAutoTable.finalY + 15;
       doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
-      
       const ingresosRows = filteredIncomes.map(i => [
         i.date, i.category, i.note || '-', fmt.format(i.amount),
         Number(i.cost) > 0 ? fmt.format(i.cost) : '-', fmt.format(Number(i.amount) - (Number(i.cost) || 0))
       ]);
-
       autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
-        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos este mes', '-', '-', '-']],
-        theme: 'striped',
-        headStyles: { fillColor: [52, 211, 153] },
-        styles: { fontSize: 9 }
+        startY: finalY + 5, head: [['Fecha', 'Categoría', 'Concepto', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
+        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos', '-', '-', '-']],
+        theme: 'striped', headStyles: { fillColor: [52, 199, 89] }, styles: { fontSize: 9 }
       });
 
       finalY = doc.lastAutoTable.finalY + 15;
@@ -352,30 +339,26 @@ export default function App() {
 
       doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
       const gastosRows = filteredExpenses.map(e => [e.date, e.category, e.note || '-', fmt.format(e.amount)]);
-
       autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Monto del Gasto']],
-        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos este mes', '-']],
-        theme: 'striped',
-        headStyles: { fillColor: [244, 63, 94] },
-        styles: { fontSize: 9 }
+        startY: finalY + 5, head: [['Fecha', 'Categoría', 'Concepto', 'Monto del Gasto']],
+        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos', '-']],
+        theme: 'striped', headStyles: { fillColor: [255, 59, 48] }, styles: { fontSize: 9 }
       });
-      doc.save(`WealthPulse_Reporte_${selectedMonth}.pdf`);
+      doc.save(`WealthPulse_${selectedMonth}.pdf`);
     } catch (error) {
       console.error("Error al exportar PDF:", error);
-      alert("Hubo un error generando el documento.");
+      alert("Error generando el documento.");
     }
   };
 
-  const CustomBarTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl">
-          <p className="text-neutral-400 text-xs mb-1.5 font-semibold">Día {label}</p>
+        <div className="bg-[#1C1C1E]/90 backdrop-blur-xl border border-[#38383A] p-3 rounded-[14px] shadow-2xl">
+          <p className="text-[#8E8E93] text-xs font-semibold mb-1 uppercase tracking-wider">{payload[0].name || `Día ${label}`}</p>
           {payload.map((entry, index) => (
-            <p key={index} className={`text-sm font-mono font-bold ${entry.dataKey === 'ingresos' ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {entry.dataKey === 'ingresos' ? '+' : '-'}{mask(entry.value)}
+            <p key={index} className={`text-[15px] font-bold ${entry.dataKey === 'ingresos' ? 'text-[#34C759]' : entry.dataKey === 'gastos' ? 'text-[#FF3B30]' : 'text-white'}`}>
+              {entry.dataKey === 'ingresos' ? '+' : entry.dataKey === 'gastos' ? '-' : ''}{mask(entry.value)}
             </p>
           ))}
         </div>
@@ -384,58 +367,36 @@ export default function App() {
     return null;
   };
 
-  const CustomPieTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl">
-          <p className="text-neutral-400 text-xs mb-1 font-semibold">{payload[0].name}</p>
-          <p className="text-sm font-mono font-bold text-white">
-            {mask(payload[0].value)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // --- RENDER 1: PANTALLA DE BLOQUEO (PIN LOCK) ---
   if (!isAuthenticated) {
-    let instruction = 'Ingresa tu PIN';
-    if (pinSetupStep === 'create') instruction = 'Crea un PIN de 4 dígitos';
-    if (pinSetupStep === 'confirm') instruction = 'Confirma tu nuevo PIN';
+    let instruction = 'Introduce tu código';
+    if (pinSetupStep === 'create') instruction = 'Crea un código de 4 dígitos';
+    if (pinSetupStep === 'confirm') instruction = 'Verifica tu nuevo código';
 
     return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 antialiased font-sans">
-        <div className="flex flex-col items-center max-w-sm w-full animate-fade-in-up">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-neutral-800 to-neutral-900 shadow-2xl border border-neutral-700/50 flex items-center justify-center mb-8">
-            <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 font-sans">
+        <div className="flex flex-col items-center max-w-[300px] w-full mt-[-10vh]">
+          <h2 className="text-[22px] text-white font-medium mb-4">{instruction}</h2>
           
-          <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">WealthPulse</h2>
-          <p className="text-neutral-500 text-sm font-medium mb-10 h-5 transition-all">{instruction}</p>
-
-          <div className={`flex gap-4 justify-center mb-12 transition-transform duration-200 ${pinError ? 'translate-x-2' : ''}`}>
+          <div className={`flex gap-[22px] justify-center mb-16 transition-transform duration-200 ${pinError ? 'translate-x-2' : ''}`}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className={`w-3.5 h-3.5 rounded-full transition-colors duration-300 ${
-                pinError ? 'bg-rose-500' : enteredPin.length > i ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-neutral-800'
+              <div key={i} className={`w-[13px] h-[13px] rounded-full transition-colors duration-200 ${
+                pinError ? 'bg-[#FF3B30]' : enteredPin.length > i ? 'bg-white' : 'border border-white/40'
               }`} />
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-5 w-full max-w-[280px]">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-4 w-full">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-20 h-20 mx-auto rounded-full bg-neutral-900/60 border border-neutral-800/40 text-2xl font-light text-white hover:bg-neutral-800 active:bg-neutral-700 active:scale-95 transition-all backdrop-blur-md flex items-center justify-center">
+              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-[75px] h-[75px] mx-auto rounded-full bg-[#333333] hover:bg-[#444444] active:bg-[#555555] text-[36px] font-normal text-white transition-colors flex items-center justify-center">
                 {num}
               </button>
             ))}
             <div />
-            <button onClick={() => handlePinPress('0')} className="w-20 h-20 mx-auto rounded-full bg-neutral-900/60 border border-neutral-800/40 text-2xl font-light text-white hover:bg-neutral-800 active:bg-neutral-700 active:scale-95 transition-all backdrop-blur-md flex items-center justify-center">
+            <button onClick={() => handlePinPress('0')} className="w-[75px] h-[75px] mx-auto rounded-full bg-[#333333] hover:bg-[#444444] active:bg-[#555555] text-[36px] font-normal text-white transition-colors flex items-center justify-center">
               0
             </button>
-            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-neutral-500 hover:text-white hover:bg-neutral-900/30 active:scale-95 transition-all">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
+            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-[75px] h-[75px] mx-auto rounded-full flex items-center justify-center text-white active:bg-[#333333] transition-colors">
+              <span className="text-[17px] font-semibold">Borrar</span>
             </button>
           </div>
         </div>
@@ -443,489 +404,329 @@ export default function App() {
     );
   }
 
-  // --- RENDER 2: SKELETONS (CARGA FANTASMA) ---
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-950 p-4 sm:p-6 lg:p-8 antialiased">
-        <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-5 border-b border-neutral-800/80 pb-6">
-            <div className="flex gap-4 items-center">
-              <div className="w-12 h-12 bg-neutral-900 rounded-2xl"></div>
-              <div className="space-y-2">
-                <div className="w-32 h-6 bg-neutral-900 rounded"></div>
-                <div className="w-20 h-3 bg-neutral-900 rounded"></div>
-              </div>
+      <div className="min-h-screen bg-black p-4 sm:p-6 lg:p-8 antialiased">
+        <div className="max-w-7xl mx-auto space-y-8 animate-pulse pt-4">
+          <div className="flex justify-between items-end">
+            <div className="w-48 h-10 bg-[#1C1C1E] rounded-xl"></div>
+            <div className="flex gap-2">
+              <div className="w-8 h-8 bg-[#1C1C1E] rounded-full"></div>
+              <div className="w-8 h-8 bg-[#1C1C1E] rounded-full"></div>
             </div>
           </div>
-          <div className="w-full h-56 bg-gradient-to-b from-neutral-900/50 to-neutral-900/10 rounded-[2rem] border border-neutral-800/40"></div>
+          <div className="w-full h-32 bg-[#1C1C1E] rounded-[20px]"></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
-            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
-            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
+            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
+            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
+            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  // --- RENDER 3: APLICACIÓN PRINCIPAL ---
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans transition-colors duration-500 relative">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-28 lg:pb-8">
-        
-        {/* CABECERA (HEADER) DISEÑO APPLE COMPACTO */}
-        <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-neutral-800/80 pb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-900 shadow-xl flex-shrink-0">
-              <Icon.Pulse className="h-6 w-6 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-50 tracking-tight">
-                Wealth<span className="text-emerald-400">Pulse</span>
-              </h1>
-              <p className="text-[11px] text-neutral-500 font-mono flex items-center gap-2 mt-0.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                SYNC REAL-TIME
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-black text-white antialiased font-sans transition-colors duration-500 relative pb-[90px]">
+      
+      <header className="pt-10 pb-4 px-4 sm:px-6 max-w-7xl mx-auto">
+        <div className="flex justify-between items-end">
+          <h1 className="text-[34px] font-bold tracking-tight leading-none">WealthPulse</h1>
           
-          {/* Controles de Cabecera: Mes, Ocultar, PDF */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="flex-1 sm:flex-none flex items-center bg-neutral-900/80 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
-              <input 
-                type="month" 
-                className="w-full bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer text-center sm:text-left" 
-                value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(e.target.value)} 
-              />
-            </div>
-            
-            <button 
-              onClick={() => setIsPrivate(!isPrivate)}
-              className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl transition-all shadow-md active:scale-95 border ${isPrivate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-neutral-900/80 text-neutral-300 hover:text-white border-neutral-800'}`}
-              title={isPrivate ? "Mostrar montos" : "Ocultar montos"}
-            >
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsPrivate(!isPrivate)} className="text-[#0A84FF] bg-[#0A84FF]/10 p-2 rounded-full active:opacity-70 transition-opacity">
               {isPrivate ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
               )}
             </button>
-
-            <button 
-              onClick={handleExportPDF}
-              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-neutral-900/80 text-emerald-500 hover:text-white transition-all shadow-md active:scale-95 border border-neutral-800"
-              title="Descargar PDF"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <button onClick={handleExportPDF} className="text-[#0A84FF] font-semibold text-[17px] active:opacity-70 transition-opacity">
+              Exportar
             </button>
-          </div>
-        </header>
-
-        {/* --- CAPITAL TOTAL HISTÓRICO --- */}
-        <div className="bg-gradient-to-b from-neutral-900/50 to-neutral-900/20 border border-neutral-800/60 rounded-[2rem] p-6 sm:p-8 text-center mb-8 backdrop-blur-sm shadow-xl">
-          <h2 className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.25em] mb-2 flex items-center justify-center gap-2">
-             Patrimonio Total Acumulado
-          </h2>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <p className={`text-5xl sm:text-6xl font-bold tracking-tighter ${isPrivate ? 'text-neutral-600' : 'text-white'}`}>
-              {mask(capitalTotal)}
-            </p>
-          </div>
-          
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-5 sm:gap-10 border-t border-neutral-800/50 pt-5">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Ahorrado en Metas</span>
-              <span className="text-sm font-semibold text-emerald-400">{mask(totalSavedInGoals)}</span>
-            </div>
-            <div className="w-px h-8 bg-neutral-800/80"></div>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Capital Libre</span>
-              <span className="text-sm font-semibold text-neutral-300">{mask(availableCash)}</span>
-            </div>
           </div>
         </div>
 
-        {/* --- SECCIÓN 1: RESUMEN Y GRÁFICAS --- */}
-        <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
-          
-          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Ingresos Neto</p>
+        <div className="mt-4 bg-[#1C1C1E] rounded-xl p-1 shadow-sm flex items-center justify-between w-full max-w-sm">
+          <input type="month" className="w-full bg-transparent text-[15px] font-semibold text-center text-white outline-none cursor-pointer py-1" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6">
+        
+        <div className="text-center mb-8 mt-2">
+          <p className="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider mb-1">Balance Total</p>
+          <h2 className={`text-[52px] font-bold tracking-tighter leading-none ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>
+            {mask(capitalTotal)}
+          </h2>
+          <div className="flex justify-center items-center gap-4 mt-3">
+            <span className="text-[13px] text-[#8E8E93]">Metas: <span className="text-white font-medium">{mask(totalSavedInGoals)}</span></span>
+            <div className="w-1 h-1 bg-[#38383A] rounded-full"></div>
+            <span className="text-[13px] text-[#8E8E93]">Libre: <span className="text-white font-medium">{mask(availableCash)}</span></span>
+          </div>
+        </div>
+
+        {/* --- PESTAÑA: RESUMEN --- */}
+        <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-[15px] font-semibold text-[#8E8E93]">Ingresos</span>
                 <TrendBadge value={incomeTrend} />
               </div>
-              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
-                {mask(monthIncomeTotal)}
-              </p>
+              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>{mask(monthIncomeTotal)}</p>
             </div>
             
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Gastos</p>
+            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-[15px] font-semibold text-[#8E8E93]">Gastos</span>
                 <TrendBadge value={expenseTrend} invertColors={true} />
               </div>
-              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>
-                {mask(monthExpenseTotal)}
-              </p>
+              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>{mask(monthExpenseTotal)}</p>
             </div>
 
-            <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Flujo Mensual</p>
+            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-[15px] font-semibold text-[#8E8E93]">Flujo</span>
                 <TrendBadge value={flowTrend} />
               </div>
-              <p className={`font-mono text-4xl font-semibold tracking-tight ${isPrivate ? 'text-neutral-600' : (monthNetFlow >= 0 ? 'text-white' : 'text-rose-500')}`}>
-                {mask(monthNetFlow)}
-              </p>
+              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : monthNetFlow >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{mask(monthNetFlow)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2">
-              <Section eyebrow="Analíticas" title="Tendencia del Mes">
-                <div className="h-64 w-full mt-4">
+              <IOSSection eyebrow="Actividad del Mes">
+                <div className="h-64 w-full p-4 pt-6">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="day" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                      <Tooltip content={<CustomBarTooltip />} cursor={{fill: '#262626', opacity: 0.4}} />
-                      <Bar dataKey="ingresos" radius={[4, 4, 0, 0]}>
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-inc-${index}`} fill={entry.ingresos > 0 ? '#34d399' : 'transparent'} />
-                        ))}
-                      </Bar>
-                      <Bar dataKey="gastos" radius={[4, 4, 0, 0]}>
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-exp-${index}`} fill={entry.gastos > 0 ? '#fb7185' : 'transparent'} />
-                        ))}
-                      </Bar>
+                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="day" stroke="#8E8E93" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomTooltip />} cursor={{fill: '#2C2C2E', opacity: 0.5}} />
+                      <Bar dataKey="ingresos" fill={IOS_COLORS.green} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="gastos" fill={IOS_COLORS.red} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </Section>
+              </IOSSection>
             </div>
             
             <div className="lg:col-span-1">
-              <Section eyebrow="Distribución" title="Categorías de Gasto">
+              <IOSSection eyebrow="Distribución">
                 {expenseBreakdown.length > 0 ? (
-                  <div className="flex flex-col items-center">
-                    <div className="h-44 w-full mt-2 relative">
+                  <div className="p-4 flex flex-col items-center">
+                    <div className="h-40 w-full relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie
-                            data={expenseBreakdown}
-                            innerRadius={55}
-                            outerRadius={75}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {expenseBreakdown.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[entry.name] || '#52525b'} />
-                            ))}
+                          <Pie data={expenseBreakdown} innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value" stroke="none">
+                            {expenseBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[entry.name] || '#8E8E93'} />)}
                           </Pie>
-                          <Tooltip content={<CustomPieTooltip />} />
+                          <Tooltip content={<CustomTooltip />} />
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-2xl font-bold text-white">100%</span>
-                        <span className="text-[9px] text-neutral-500 uppercase tracking-widest mt-0.5">Gastos</span>
-                      </div>
                     </div>
-                    
-                    <div className="w-full mt-4 space-y-2.5">
-                      {expenseBreakdown.map((item, idx) => {
-                        const pct = monthExpenseTotal > 0 ? ((item.value / monthExpenseTotal) * 100).toFixed(1) : 0;
-                        return (
-                          <div key={idx} className="flex items-center justify-between border-b border-neutral-800/40 pb-2.5 last:border-0 last:pb-0">
-                            <div className="flex items-center gap-2.5">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLORS[item.name] || '#52525b' }}></span>
-                              <span className="text-xs font-medium text-neutral-300">{item.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3 font-mono text-xs">
-                              <span className="text-neutral-400">{mask(item.value)}</span>
-                              <span className="text-white font-bold w-9 text-right bg-neutral-900 px-1.5 py-0.5 rounded">{pct}%</span>
-                            </div>
+                    <div className="w-full mt-4">
+                      {expenseBreakdown.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-2 border-b border-[#38383A] last:border-0">
+                          <div className="flex items-center gap-3">
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: EXPENSE_COLORS[item.name] || '#8E8E93' }}></span>
+                            <span className="text-[15px] font-medium">{item.name}</span>
                           </div>
-                        );
-                      })}
+                          <span className="text-[15px] text-[#8E8E93]">{mask(item.value)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="h-64 flex flex-col items-center justify-center text-neutral-600 space-y-2">
-                    <Icon.Wallet className="h-8 w-8 opacity-20" />
-                    <span className="text-sm italic font-medium">Sin gastos este mes</span>
-                  </div>
+                  <div className="h-40 flex items-center justify-center text-[#8E8E93] text-[15px]">Sin gastos</div>
                 )}
-              </Section>
+              </IOSSection>
             </div>
           </div>
         </div>
 
-        {/* --- SECCIÓN 2: TRANSACCIONES --- */}
-        <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} lg:block mt-8`}>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* --- PESTAÑA: TRANSACCIONES --- */}
+        <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <Section eyebrow="Motor de Ingresos" title="Registrar Entrada">
-              <form onSubmit={saveIncome} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <Field label="Categoría">
-                  <select className={inputCls} value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>
-                    {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-                <Field label="Cobro Total">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono">$</span>
-                    <input type="number" step="any" min="0.01" required className={`${inputCls} pl-8`} value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} />
-                  </div>
-                </Field>
-                {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
-                  <Field label="Costo Insumo (Opcional)">
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono">$</span>
-                      <input type="number" step="any" min="0" placeholder="Ej. Refacción" className={`${inputCls} pl-8`} value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} />
-                    </div>
-                  </Field>
-                )}
-                <Field label="Fecha">
-                  <input type="date" required className={inputCls} value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} />
-                </Field>
-                <div className="sm:col-span-2">
-                  <Field label="Nota / Detalles">
-                    <input type="text" placeholder="Ej. Pantalla iPhone 13" className={inputCls} value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} />
-                  </Field>
-                </div>
-                <button type="submit" className="sm:col-span-2 mt-2 w-full rounded-2xl bg-emerald-600 px-4 py-3.5 text-sm font-bold tracking-wide text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-500 active:scale-[0.98] flex items-center justify-center gap-2">
-                  {incomeForm.id ? 'Guardar Cambios' : <><Icon.Plus className="w-5 h-5"/> Agregar en la Nube</>}
+            <div>
+              <IOSSection eyebrow="Añadir Ingreso">
+                <form onSubmit={saveIncome}>
+                  <IOSRow label="Categoría"><select className={inputCls} value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>{INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></IOSRow>
+                  <IOSRow label="Monto"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} /></IOSRow>
+                  {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
+                    <IOSRow label="Costo Insumo"><input type="number" step="any" min="0" placeholder="$ 0.00 (Opcional)" className={inputCls} value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} /></IOSRow>
+                  )}
+                  <IOSRow label="Fecha"><input type="date" required className={inputCls} value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} /></IOSRow>
+                  <IOSRow label="Nota"><input type="text" placeholder="Opcional" className={inputCls} value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} /></IOSRow>
+                  <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Guardar Ingreso</button>
+                </form>
+              </IOSSection>
+
+              {/* Acordeón Restaurado: Historial de Ingresos */}
+              <div className="mb-8">
+                <button 
+                  type="button" 
+                  onClick={() => setShowIncomesHistory(!showIncomesHistory)}
+                  className="w-full flex items-center justify-between bg-[#1C1C1E] rounded-[20px] p-4 active:bg-[#2C2C2E] transition-colors"
+                >
+                  <span className="text-[17px] font-semibold text-white">Historial de Ingresos</span>
+                  <svg className={`w-5 h-5 text-[#8E8E93] transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
-              </form>
-              
-              <div className="border-t border-neutral-800/40 pt-4">
-                <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full flex items-center justify-between py-2 group focus:outline-none">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-emerald-400 transition-colors">Historial Reciente</h3>
-                  <svg className={`w-4 h-4 text-neutral-500 group-hover:text-emerald-400 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showIncomesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-                  <ul className="space-y-3 overflow-y-auto pr-2 max-h-64">
-                    {filteredIncomes.map((i) => {
-                      const net = Number(i.amount) - (Number(i.cost) || 0);
-                      return (
-                        <li key={i.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
-                          <div className="text-sm">
-                            <p className="text-neutral-100 font-medium">{i.category} {i.note && <span className="text-neutral-500 font-normal ml-1">· {i.note}</span>}</p>
-                            <div className="flex gap-2 items-center mt-1">
-                              <span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(i.date)}</span>
-                              {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: {mask(i.amount)}</span>}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>+{mask(net)}</span>
-                            <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
-                              <button onClick={() => setIncomeForm(i)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
-                              <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </div>
-            </Section>
-
-            <Section eyebrow="Tracker de Gastos" title="Registrar Salida">
-              <form onSubmit={saveExpense} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <Field label="Categoría">
-                  <select className={inputCls} value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>
-                    {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-                <Field label="Monto">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono">$</span>
-                    <input type="number" step="any" min="0.01" required className={`${inputCls} pl-8`} value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
-                  </div>
-                </Field>
-                <Field label="Fecha">
-                  <input type="date" required className={inputCls} value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} />
-                </Field>
-                <Field label="Nota / Detalles">
-                  <input type="text" placeholder="Ej. Cena fin de semana" className={inputCls} value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} />
-                </Field>
-                <button type="submit" className="sm:col-span-2 mt-2 w-full rounded-2xl bg-rose-600 px-4 py-3.5 text-sm font-bold tracking-wide text-white shadow-lg shadow-rose-600/20 transition-all hover:bg-rose-500 active:scale-[0.98] flex items-center justify-center gap-2">
-                  {expenseForm.id ? 'Guardar Cambios' : <><Icon.Plus className="w-5 h-5"/> Agregar en la Nube</>}
-                </button>
-              </form>
-
-              <div className="border-t border-neutral-800/40 pt-4">
-                <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full flex items-center justify-between py-2 group focus:outline-none">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-rose-400 transition-colors">Historial Reciente</h3>
-                  <svg className={`w-4 h-4 text-neutral-500 group-hover:text-rose-400 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showExpensesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-                  <ul className="space-y-3 overflow-y-auto pr-2 max-h-64">
-                    {filteredExpenses.map((e) => (
-                      <li key={e.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
-                        <div className="text-sm">
-                          <p className="text-neutral-100 font-medium">{e.category} {e.note && <span className="text-neutral-500 font-normal ml-1">· {e.note}</span>}</p>
-                          <div className="mt-1"><span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(e.date)}</span></div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>-{mask(e.amount)}</span>
-                          <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
-                            <button onClick={() => setExpenseForm(e)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
-                            <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </Section>
-          </div>
-        </div>
-
-        {/* --- SECCIÓN 3: METAS --- */}
-        <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} lg:block mt-8`}>
-          <Section eyebrow="Planificación Estratégica" title="Gestor de Metas de Capital">
-            <form onSubmit={saveGoal} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-10 border-b border-neutral-800/40 pb-8">
-              <div className="sm:col-span-2">
-                <Field label="Nombre del Objetivo">
-                  <input type="text" required placeholder="Ej. Casa en Tlajomulco" className={inputCls} value={goalForm.name} onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })} />
-                </Field>
-              </div>
-              <Field label="Monto Meta">
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono">$</span>
-                  <input type="number" step="any" min="0.01" required className={`${inputCls} pl-8`} value={goalForm.target} onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })} />
-                </div>
-              </Field>
-              <Field label="Capital Actual">
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono">$</span>
-                  <input type="number" step="any" min="0" className={`${inputCls} pl-8`} value={goalForm.saved} onChange={(e) => setGoalForm({ ...goalForm, saved: e.target.value })} />
-                </div>
-              </Field>
-              <Field label="Fecha Límite">
-                <input type="date" required className={inputCls} value={goalForm.deadline} onChange={(e) => setGoalForm({ ...goalForm, deadline: e.target.value })} />
-              </Field>
-              <Field label="Dónde lo guardo">
-                <select className={inputCls} value={goalForm.storage} onChange={(e) => setGoalForm({ ...goalForm, storage: e.target.value })}>
-                  {STORAGE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </Field>
-              <div className="sm:col-span-2 lg:col-span-3 xl:col-span-6 flex justify-end mt-2">
-                <button type="submit" className="w-full sm:w-auto rounded-2xl bg-white px-8 py-3.5 text-sm font-bold tracking-wide text-neutral-950 shadow-lg shadow-white/10 transition-all hover:bg-neutral-200 active:scale-[0.98]">
-                  {goalForm.id ? 'Actualizar Registro' : 'Inicializar Meta'}
-                </button>
-              </div>
-            </form>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {goals.map((g) => {
-                const target = Number(g.target);
-                const saved = Number(g.saved);
-                const pct = Math.min(100, (saved / target) * 100);
-                const remaining = target - saved;
-
-                const d1 = new Date();
-                const d2 = new Date(g.deadline + 'T00:00:00');
-                const msPerWeek = 1000 * 60 * 60 * 24 * 7;
-                let weeksLeft = Math.ceil((d2.getTime() - d1.getTime()) / msPerWeek);
-                if (weeksLeft <= 0) weeksLeft = 1;
-                
-                const weeklyNeeded = remaining / weeksLeft;
-
-                return (
-                  <div key={g.id} className="group rounded-3xl border border-neutral-800/80 bg-neutral-900/30 p-6 relative overflow-hidden shadow-xl transition-all duration-300 hover:border-neutral-600 hover:-translate-y-1">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex flex-col gap-2">
-                        <h3 className="text-white font-bold text-lg tracking-wide uppercase">{g.name}</h3>
-                        {g.storage && (
-                          <span className="text-[10px] w-max font-bold uppercase tracking-[0.1em] bg-neutral-800 text-neutral-300 px-2.5 py-1 rounded-md border border-neutral-700/50">
-                            {g.storage === 'Efectivo' ? '💵' : '💳'} {g.storage}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-1.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setGoalForm(g)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-white rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
-                        <button onClick={() => handleDeleteClick('goals', g.id, setGoals)} className="p-1.5 bg-neutral-800 text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-end font-mono mb-3 mt-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-neutral-500 text-xs">Progreso</span>
-                        <span className="text-neutral-100 text-lg font-medium">
-                          {mask(saved)} <span className="text-neutral-600 text-sm font-normal">/ {mask(target)}</span>
-                        </span>
-                      </div>
-                      <span className="text-emerald-400 font-bold text-xl">{pct.toFixed(0)}%</span>
-                    </div>
-
-                    <div className="h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden mb-6 shadow-inner">
-                      <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000 ease-out" style={{ width: `${pct}%` }}></div>
-                    </div>
-
-                    {remaining > 0 ? (
-                      <div className="pt-4 border-t border-neutral-800/50 flex items-center justify-between gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider flex items-center gap-1">
-                            <Icon.Target className="h-3 w-3 text-emerald-500" /> Meta Semanal
-                          </span>
-                          <span className={`font-mono text-sm mt-0.5 font-bold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
-                            {mask(weeklyNeeded)}<span className="text-neutral-500 text-[10px] font-sans"> x {weeksLeft} sem</span>
-                          </span>
-                        </div>
-                        <button onClick={() => handleAddFundsClick(g)} className="text-xs font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 px-4 py-2.5 rounded-xl transition-all active:scale-95">
-                          Abonar
-                        </button>
-                      </div>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showIncomesHistory ? 'max-h-[800px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
+                    {filteredIncomes.length === 0 ? (
+                      <div className="p-4 text-center text-[#8E8E93]">No hay ingresos registrados</div>
                     ) : (
-                      <div className="mt-2 pt-4 border-t border-neutral-800/50 text-sm text-emerald-400 font-bold flex items-center gap-2">
-                        🎉 ¡Meta completada!
+                      <div className="max-h-64 overflow-y-auto">
+                        {filteredIncomes.map((i) => {
+                          const net = Number(i.amount) - (Number(i.cost) || 0);
+                          return (
+                            <div key={i.id} className="flex justify-between items-center py-3 px-4 border-b border-[#38383A] last:border-0 active:bg-[#2C2C2E] transition-colors">
+                              <div>
+                                <p className="text-[17px] font-medium text-white">{i.category}</p>
+                                <p className="text-[13px] text-[#8E8E93]">{i.note || formatHumanDate(i.date)}</p>
+                              </div>
+                              <div className="text-right flex items-center gap-3">
+                                <div>
+                                  <p className={`text-[17px] font-semibold ${isPrivate ? 'text-[#8E8E93]' : 'text-[#34C759]'}`}>+{mask(net)}</p>
+                                  {Number(i.cost) > 0 && <p className="text-[11px] text-[#8E8E93]">C: {mask(i.cost)}</p>}
+                                </div>
+                                <div className="flex flex-col gap-1 border-l border-[#38383A] pl-3 ml-1">
+                                  <button onClick={() => setIncomeForm(i)} className="text-[#0A84FF]"><Icon.Edit className="w-4 h-4"/></button>
+                                  <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
-          </Section>
-        </div>
-      </div>
 
-      {/* --- NAVEGACIÓN MÓVIL (UITabBar STYLE - NATIVA Y PLANA) --- */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/85 backdrop-blur-xl border-t border-neutral-800/60 z-40">
-        <ul className="flex justify-around items-center h-[84px] px-2 pb-6 pt-2">
+            <div>
+              <IOSSection eyebrow="Añadir Gasto">
+                <form onSubmit={saveExpense}>
+                  <IOSRow label="Categoría"><select className={inputCls} value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></IOSRow>
+                  <IOSRow label="Monto"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} /></IOSRow>
+                  <IOSRow label="Fecha"><input type="date" required className={inputCls} value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} /></IOSRow>
+                  <IOSRow label="Nota"><input type="text" placeholder="Opcional" className={inputCls} value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} /></IOSRow>
+                  <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Guardar Gasto</button>
+                </form>
+              </IOSSection>
+
+              {/* Acordeón Restaurado: Historial de Gastos */}
+              <div className="mb-8">
+                <button 
+                  type="button" 
+                  onClick={() => setShowExpensesHistory(!showExpensesHistory)}
+                  className="w-full flex items-center justify-between bg-[#1C1C1E] rounded-[20px] p-4 active:bg-[#2C2C2E] transition-colors"
+                >
+                  <span className="text-[17px] font-semibold text-white">Historial de Gastos</span>
+                  <svg className={`w-5 h-5 text-[#8E8E93] transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showExpensesHistory ? 'max-h-[800px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
+                    {filteredExpenses.length === 0 ? (
+                      <div className="p-4 text-center text-[#8E8E93]">No hay gastos registrados</div>
+                    ) : (
+                      <div className="max-h-64 overflow-y-auto">
+                        {filteredExpenses.map((e) => (
+                          <div key={e.id} className="flex justify-between items-center py-3 px-4 border-b border-[#38383A] last:border-0 active:bg-[#2C2C2E] transition-colors">
+                            <div>
+                              <p className="text-[17px] font-medium text-white">{e.category}</p>
+                              <p className="text-[13px] text-[#8E8E93]">{e.note || formatHumanDate(e.date)}</p>
+                            </div>
+                            <div className="text-right flex items-center gap-3">
+                              <p className={`text-[17px] font-semibold ${isPrivate ? 'text-[#8E8E93]' : 'text-white'}`}>-{mask(e.amount)}</p>
+                              <div className="flex flex-col gap-1 border-l border-[#38383A] pl-3 ml-1">
+                                <button onClick={() => setExpenseForm(e)} className="text-[#0A84FF]"><Icon.Edit className="w-4 h-4"/></button>
+                                <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* --- PESTAÑA: METAS --- */}
+        <div className={`${activeTab === 'metas' ? 'block' : 'hidden'}`}>
+          <IOSSection eyebrow="Nueva Meta">
+            <form onSubmit={saveGoal}>
+              <IOSRow label="Objetivo"><input type="text" required placeholder="Ej. Enganche" className={inputCls} value={goalForm.name} onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })} /></IOSRow>
+              <IOSRow label="Meta Total"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={goalForm.target} onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })} /></IOSRow>
+              <IOSRow label="Guardado"><input type="number" step="any" min="0" placeholder="$ 0.00" className={inputCls} value={goalForm.saved} onChange={(e) => setGoalForm({ ...goalForm, saved: e.target.value })} /></IOSRow>
+              <IOSRow label="Fecha"><input type="date" required className={inputCls} value={goalForm.deadline} onChange={(e) => setGoalForm({ ...goalForm, deadline: e.target.value })} /></IOSRow>
+              <IOSRow label="Ubicación"><select className={inputCls} value={goalForm.storage} onChange={(e) => setGoalForm({ ...goalForm, storage: e.target.value })}>{STORAGE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></IOSRow>
+              <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Crear Meta</button>
+            </form>
+          </IOSSection>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+            {goals.map((g) => {
+              const target = Number(g.target); const saved = Number(g.saved);
+              const pct = Math.min(100, (saved / target) * 100);
+              return (
+                <div key={g.id} className="bg-[#1C1C1E] rounded-[20px] p-5">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-[17px] font-semibold text-white">{g.name}</h3>
+                      <p className="text-[13px] text-[#8E8E93]">{g.storage}</p>
+                    </div>
+                    <button onClick={() => handleDeleteClick('goals', g.id, setGoals)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
+                  </div>
+                  
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-[15px] font-semibold text-white">{mask(saved)} <span className="text-[#8E8E93] text-[13px] font-normal">de {mask(target)}</span></span>
+                    <span className="text-[15px] font-bold text-[#34C759]">{pct.toFixed(0)}%</span>
+                  </div>
+                  
+                  <div className="h-2 w-full bg-[#2C2C2E] rounded-full overflow-hidden mb-4">
+                    <div className="h-full bg-[#34C759] transition-all" style={{ width: `${pct}%` }}></div>
+                  </div>
+                  
+                  <button onClick={() => handleAddFundsClick(g)} className="w-full bg-[#2C2C2E] hover:bg-[#38383A] active:bg-[#48484A] text-[#0A84FF] text-[15px] font-semibold py-2.5 rounded-[12px] transition-colors">
+                    Abonar
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </main>
+
+      {/* --- NAVEGACIÓN MÓVIL (UITabBar Native Style) --- */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#121212]/80 backdrop-blur-2xl border-t border-white/10 z-40">
+        <ul className="flex justify-around items-center h-[83px] pb-safe pt-2 px-2">
           <li className="flex-1">
-            <button onClick={() => setActiveTab('resumen')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'resumen' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+            <button onClick={() => setActiveTab('resumen')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'resumen' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
               <Icon.Home className="h-6 w-6" />
               <span className="text-[10px] font-medium">Resumen</span>
             </button>
           </li>
           <li className="flex-1">
-            <button onClick={() => setActiveTab('transacciones')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'transacciones' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+            <button onClick={() => setActiveTab('transacciones')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'transacciones' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
               <Icon.Wallet className="h-6 w-6" />
               <span className="text-[10px] font-medium">Historial</span>
             </button>
           </li>
           <li className="flex-1">
-            <button onClick={() => setIsQuickAddOpen(true)} className="w-full flex flex-col items-center gap-1 text-neutral-400 hover:text-emerald-400 active:scale-95 transition-all">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-[10px] font-medium">Añadir</span>
+            <button onClick={() => setIsQuickAddOpen(true)} className="w-full flex flex-col items-center gap-1 text-[#8E8E93] active:text-white transition-colors">
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span className="text-[10px] font-medium">Rápido</span>
             </button>
           </li>
           <li className="flex-1">
-            <button onClick={() => setActiveTab('metas')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'metas' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+            <button onClick={() => setActiveTab('metas')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'metas' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
               <Icon.Target className="h-6 w-6" />
               <span className="text-[10px] font-medium">Metas</span>
             </button>
@@ -933,28 +734,32 @@ export default function App() {
         </ul>
       </nav>
 
-      {/* --- BOTTOM SHEET MODAL (CAPTURA RÁPIDA) --- */}
+      {/* --- BOTTOM SHEET MODAL (Gasto Rápido iOS) --- */}
       <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsQuickAddOpen(false)}></div>
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsQuickAddOpen(false)}></div>
         
-        <div className={`absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-[2.5rem] p-6 pb-safe transition-transform duration-300 transform ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="w-12 h-1.5 bg-neutral-700 rounded-full mx-auto mb-6"></div>
-          <h3 className="text-xl font-bold text-white tracking-tight mb-6 text-center">Gasto Rápido</h3>
+        <div className={`absolute bottom-0 left-0 right-0 bg-[#1C1C1E] rounded-t-[32px] p-6 pb-12 transition-transform duration-300 transform ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="w-12 h-1.5 bg-[#48484A] rounded-full mx-auto mb-6"></div>
+          <h3 className="text-[20px] font-bold text-white tracking-tight mb-6 text-center">Gasto Rápido</h3>
           
           <form onSubmit={handleQuickExpense} className="flex flex-col gap-4">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xl">$</span>
-              <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-4 pl-9 text-2xl font-mono text-white outline-none transition-all focus:border-emerald-500/50" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
+            <div className="bg-[#2C2C2E] rounded-[16px] overflow-hidden">
+              <div className="flex items-center px-4 py-3 border-b border-[#38383A]">
+                <span className="text-[#8E8E93] text-[17px] mr-2">$</span>
+                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-transparent text-[22px] font-semibold text-white outline-none" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
+              </div>
+              <div className="px-4 py-3 border-b border-[#38383A]">
+                <select className="w-full bg-transparent text-[17px] text-white outline-none" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
+                  {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="px-4 py-3">
+                <input type="text" placeholder="Nota opcional" className="w-full bg-transparent text-[17px] text-white outline-none placeholder:text-[#8E8E93]" value={qNote} onChange={(e) => setQNote(e.target.value)} />
+              </div>
             </div>
-
-            <select className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3.5 text-sm font-medium text-white outline-none focus:border-emerald-500/50" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
-              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-
-            <input type="text" placeholder="¿En qué gastaste? (Opcional)" className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-3.5 text-sm font-medium text-white outline-none placeholder:text-neutral-600 focus:border-emerald-500/50" value={qNote} onChange={(e) => setQNote(e.target.value)} />
             
-            <button type="submit" className="mt-2 w-full rounded-2xl bg-emerald-600 px-4 py-4 text-sm font-bold tracking-wide text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all">
-              Guardar Gasto
+            <button type="submit" className="mt-2 w-full bg-[#0A84FF] text-white text-[17px] font-semibold py-4 rounded-[14px] active:bg-[#0A84FF]/80 transition-colors">
+              Guardar
             </button>
           </form>
         </div>
@@ -962,34 +767,32 @@ export default function App() {
 
       {/* MODALES CLÁSICOS */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-rose-500/10 rounded-full text-rose-400"><Icon.Warning className="h-6 w-6" /></div>
-              <h3 className="text-xl font-semibold text-white tracking-tight">Eliminar Registro</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md px-4">
+          <div className="bg-[#1C1C1E] rounded-[20px] w-full max-w-[270px] text-center overflow-hidden">
+            <div className="p-6">
+              <h3 className="text-[17px] font-semibold text-white mb-1">Eliminar Registro</h3>
+              <p className="text-[13px] text-[#8E8E93]">Esta acción no se puede deshacer.</p>
             </div>
-            <p className="text-sm text-neutral-400 mb-8 leading-relaxed">¿Estás seguro? Esta acción no se puede deshacer y se borrará permanentemente de la nube.</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })} className="px-5 py-2.5 text-sm font-bold text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded-2xl transition-colors">Cancelar</button>
-              <button onClick={confirmDelete} className="px-5 py-2.5 text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-2xl transition-all shadow-lg shadow-rose-600/20">Sí, eliminar</button>
+            <div className="border-t border-[#38383A] flex flex-col">
+              <button onClick={confirmDelete} className="py-3 text-[17px] text-[#FF3B30] font-normal border-b border-[#38383A] active:bg-[#2C2C2E]">Eliminar</button>
+              <button onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })} className="py-3 text-[17px] text-[#0A84FF] font-semibold active:bg-[#2C2C2E]">Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
       {fundModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-xl font-semibold text-white tracking-tight mb-2">Abonar a "{fundModal.goal?.name}"</h3>
-            <p className="text-sm text-neutral-400 mb-6">Ingresa el monto que vas a sumar a este objetivo.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md px-4">
+          <div className="bg-[#1C1C1E] rounded-[20px] p-6 w-full max-w-sm">
+            <h3 className="text-[20px] font-bold text-white mb-4 text-center">Abonar a Meta</h3>
             <form onSubmit={confirmAddFunds}>
-              <div className="relative mb-8">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xl">$</span>
-                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full rounded-2xl border border-neutral-700 bg-neutral-950 px-4 py-4 pl-9 text-2xl font-mono text-white outline-none transition-all placeholder:text-neutral-700 focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
+              <div className="bg-[#2C2C2E] rounded-[14px] flex items-center px-4 py-3 mb-6">
+                <span className="text-[#8E8E93] text-[17px] mr-2">$</span>
+                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-transparent text-[22px] font-semibold text-white outline-none" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
               </div>
-              <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })} className="px-5 py-2.5 text-sm font-bold text-neutral-300 bg-neutral-800 hover:bg-neutral-700 rounded-2xl transition-colors">Cancelar</button>
-                <button type="submit" className="px-5 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-2xl transition-all shadow-lg shadow-emerald-600/20">Confirmar Abono</button>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })} className="flex-1 py-3 text-[17px] text-[#0A84FF] font-semibold bg-[#2C2C2E] rounded-[14px] active:bg-[#38383A]">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 text-[17px] text-white font-semibold bg-[#0A84FF] rounded-[14px] active:bg-[#0A84FF]/80">Abonar</button>
               </div>
             </form>
           </div>
