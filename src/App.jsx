@@ -128,7 +128,7 @@ export default function App() {
         setSavedPin(currentPin);
         setIsAuthenticated(true);
       } else {
-        triggerPinError('Los códigos no coinciden. Intenta de nuevo.', 'create');
+        triggerPinError('Los códigos no coinciden.', 'create');
       }
     } else if (pinSetupStep === 'enter') {
       if (currentPin === savedPin) {
@@ -235,7 +235,7 @@ export default function App() {
     e.preventDefault();
     const amount = parseFloat(incomeForm.amount);
     const cost = parseFloat(incomeForm.cost) || 0;
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido mayor a 0.');
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
     if (cost < 0) return alert('El costo del insumo no puede ser negativo.');
     if (incomeForm.id) {
       const { data, error } = await supabase.from('incomes').update({ amount, cost, category: incomeForm.category, note: incomeForm.note, date: incomeForm.date }).eq('id', incomeForm.id).select();
@@ -250,7 +250,7 @@ export default function App() {
   const saveExpense = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(expenseForm.amount);
-    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto de gasto válido mayor a 0.');
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido.');
     if (expenseForm.id) {
       const { data, error } = await supabase.from('expenses').update({ amount, category: expenseForm.category, note: expenseForm.note, date: expenseForm.date }).eq('id', expenseForm.id).select();
       if (!error && data) setExpenses((prev) => prev.map((ex) => (ex.id === expenseForm.id ? data[0] : ex)));
@@ -265,8 +265,8 @@ export default function App() {
     e.preventDefault();
     const target = parseFloat(goalForm.target);
     const saved = parseFloat(goalForm.saved) || 0;
-    if (isNaN(target) || target <= 0) return alert('La meta de capital debe ser mayor a 0.');
-    if (saved < 0) return alert('El capital ahorrado no puede ser negativo.');
+    if (isNaN(target) || target <= 0) return alert('La meta debe ser mayor a 0.');
+    if (saved < 0) return alert('El ahorro no puede ser negativo.');
     if (goalForm.id) {
       const { data, error } = await supabase.from('goals').update({ name: goalForm.name, target, saved, deadline: goalForm.deadline, storage: goalForm.storage }).eq('id', goalForm.id).select();
       if (!error && data) setGoals((prev) => prev.map((g) => (g.id === goalForm.id ? data[0] : g)));
@@ -416,7 +416,6 @@ export default function App() {
           <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">WealthPulse</h2>
           <p className="text-neutral-500 text-sm font-medium mb-10 h-5 transition-all">{instruction}</p>
 
-          {/* Dots Indicator */}
           <div className={`flex gap-4 justify-center mb-12 transition-transform duration-200 ${pinError ? 'translate-x-2' : ''}`}>
             {[...Array(4)].map((_, i) => (
               <div key={i} className={`w-3.5 h-3.5 rounded-full transition-colors duration-300 ${
@@ -425,7 +424,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Keypad */}
           <div className="grid grid-cols-3 gap-5 w-full max-w-[280px]">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button key={num} onClick={() => handlePinPress(num.toString())} className="w-20 h-20 mx-auto rounded-full bg-neutral-900/60 border border-neutral-800/40 text-2xl font-light text-white hover:bg-neutral-800 active:bg-neutral-700 active:scale-95 transition-all backdrop-blur-md flex items-center justify-center">
@@ -445,7 +443,7 @@ export default function App() {
     );
   }
 
-  // --- RENDER 2: SKELETONS (CARGA FANTASMA AL ESTILO APPLE) ---
+  // --- RENDER 2: SKELETONS (CARGA FANTASMA) ---
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral-950 p-4 sm:p-6 lg:p-8 antialiased">
@@ -473,9 +471,9 @@ export default function App() {
   // --- RENDER 3: APLICACIÓN PRINCIPAL ---
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans transition-colors duration-500 relative">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-32 lg:pb-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-28 lg:pb-8">
         
-        {/* CABECERA (PDF REGRESA AQUÍ) */}
+        {/* CABECERA (HEADER) DISEÑO APPLE COMPACTO */}
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-neutral-800/80 pb-6">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-800 to-neutral-900 shadow-xl flex-shrink-0">
@@ -495,8 +493,9 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-            <div className="flex items-center flex-1 sm:flex-none bg-neutral-900/60 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
+          {/* Controles de Cabecera: Mes, Ocultar, PDF */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex-1 sm:flex-none flex items-center bg-neutral-900/80 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
               <input 
                 type="month" 
                 className="w-full bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer text-center sm:text-left" 
@@ -505,15 +504,24 @@ export default function App() {
               />
             </div>
             
-            {/* Botón PDF restaurado y responsive */}
+            <button 
+              onClick={() => setIsPrivate(!isPrivate)}
+              className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl transition-all shadow-md active:scale-95 border ${isPrivate ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-neutral-900/80 text-neutral-300 hover:text-white border-neutral-800'}`}
+              title={isPrivate ? "Mostrar montos" : "Ocultar montos"}
+            >
+              {isPrivate ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              )}
+            </button>
+
             <button 
               onClick={handleExportPDF}
-              className="flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-4 py-2.5 rounded-xl transition-all shadow-md active:scale-95 border border-neutral-700/50"
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-neutral-900/80 text-emerald-500 hover:text-white transition-all shadow-md active:scale-95 border border-neutral-800"
+              title="Descargar PDF"
             >
-              <svg className="w-5 h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              <span className="hidden sm:inline text-xs font-bold tracking-wide">Exportar</span>
-              {/* En móvil, mostramos solo la palabra PDF debajo o junto al ícono */}
-              <span className="sm:hidden font-mono uppercase tracking-widest text-[10px] mt-0.5">PDF</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </button>
           </div>
         </header>
@@ -662,7 +670,6 @@ export default function App() {
         <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} lg:block mt-8`}>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             
-            {/* Ingresos */}
             <Section eyebrow="Motor de Ingresos" title="Registrar Entrada">
               <form onSubmit={saveIncome} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 <Field label="Categoría">
@@ -731,7 +738,6 @@ export default function App() {
               </div>
             </Section>
 
-            {/* Gastos */}
             <Section eyebrow="Tracker de Gastos" title="Registrar Salida">
               <form onSubmit={saveExpense} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 <Field label="Categoría">
@@ -895,58 +901,42 @@ export default function App() {
         </div>
       </div>
 
-      {/* --- NUEVA NAVEGACIÓN MÓVIL (DISEÑO APPLE PAY) --- */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/90 backdrop-blur-xl border-t border-neutral-800/80 z-40 h-[72px]">
-        
-        {/* Botón Flotante Central (FAB) con Recorte */}
-        <div className="absolute left-1/2 -top-7 -translate-x-1/2 bg-neutral-950 p-2 rounded-full">
-          <button 
-            onClick={() => setIsQuickAddOpen(true)} 
-            className="flex items-center justify-center w-[56px] h-[56px] bg-emerald-500 hover:bg-emerald-400 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] text-white transition-transform active:scale-90"
-          >
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Iconos Laterales simétricos */}
-        <ul className="flex justify-between items-center h-full px-4 pb-safe">
-          <div className="flex w-[42%] justify-between px-2">
-            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center transition-all ${activeTab === 'resumen' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Home className="h-6 w-6 mb-0.5" />
-              <span className="text-[9px] font-bold tracking-wide">Resumen</span>
+      {/* --- NAVEGACIÓN MÓVIL (UITabBar STYLE - NATIVA Y PLANA) --- */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/85 backdrop-blur-xl border-t border-neutral-800/60 z-40">
+        <ul className="flex justify-around items-center h-[84px] px-2 pb-6 pt-2">
+          <li className="flex-1">
+            <button onClick={() => setActiveTab('resumen')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'resumen' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+              <Icon.Home className="h-6 w-6" />
+              <span className="text-[10px] font-medium">Resumen</span>
             </button>
-            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center transition-all ${activeTab === 'transacciones' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Wallet className="h-6 w-6 mb-0.5" />
-              <span className="text-[9px] font-bold tracking-wide">Tracker</span>
+          </li>
+          <li className="flex-1">
+            <button onClick={() => setActiveTab('transacciones')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'transacciones' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+              <Icon.Wallet className="h-6 w-6" />
+              <span className="text-[10px] font-medium">Historial</span>
             </button>
-          </div>
-          
-          <div className="flex w-[42%] justify-between px-2">
-            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center transition-all ${activeTab === 'metas' ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              <Icon.Target className="h-6 w-6 mb-0.5" />
-              <span className="text-[9px] font-bold tracking-wide">Metas</span>
+          </li>
+          <li className="flex-1">
+            <button onClick={() => setIsQuickAddOpen(true)} className="w-full flex flex-col items-center gap-1 text-neutral-400 hover:text-emerald-400 active:scale-95 transition-all">
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-[10px] font-medium">Añadir</span>
             </button>
-            {/* Ocultar Montos en menú inferior */}
-            <button onClick={() => setIsPrivate(!isPrivate)} className={`flex flex-col items-center transition-all ${isPrivate ? 'text-emerald-400' : 'text-neutral-500 hover:text-neutral-300'}`}>
-              {isPrivate ? (
-                <svg className="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-              ) : (
-                <svg className="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              )}
-              <span className="text-[9px] font-bold tracking-wide">Ocultar</span>
+          </li>
+          <li className="flex-1">
+            <button onClick={() => setActiveTab('metas')} className={`w-full flex flex-col items-center gap-1 transition-all ${activeTab === 'metas' ? 'text-emerald-400' : 'text-neutral-500'}`}>
+              <Icon.Target className="h-6 w-6" />
+              <span className="text-[10px] font-medium">Metas</span>
             </button>
-          </div>
+          </li>
         </ul>
       </nav>
 
       {/* --- BOTTOM SHEET MODAL (CAPTURA RÁPIDA) --- */}
       <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        {/* Capa de desenfoque trasera */}
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsQuickAddOpen(false)}></div>
         
-        {/* Tarjeta deslizable */}
         <div className={`absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-[2.5rem] p-6 pb-safe transition-transform duration-300 transform ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
           <div className="w-12 h-1.5 bg-neutral-700 rounded-full mx-auto mb-6"></div>
           <h3 className="text-xl font-bold text-white tracking-tight mb-6 text-center">Gasto Rápido</h3>
