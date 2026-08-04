@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { Icon } from './components/Icons';
 import { useFinanceData } from './hooks/useFinanceData';
@@ -54,13 +54,11 @@ const Field = ({ label, children }) => (
   </label>
 );
 
-// Componente para el indicador de rendimiento (Trend Badge)
 const TrendBadge = ({ value, invertColors = false }) => {
   if (value === 0 || isNaN(value)) {
     return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-neutral-500 bg-neutral-800/50 uppercase tracking-wide">≈ 0% vs mes ant.</span>;
   }
   const isPositive = value > 0;
-  // Si invertColors es true (ej. para Gastos), un aumento (positivo) es malo (rojo).
   const isGood = invertColors ? !isPositive : isPositive;
   const colorCls = isGood ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10';
   const icon = isPositive ? '↑' : '↓';
@@ -77,10 +75,18 @@ const inputCls = 'w-full rounded-2xl border-none bg-neutral-900 px-4 py-3.5 text
 /* ------------------------------- APP PRINCIPAL ------------------------------- */
 export default function App() {
   const { incomes, setIncomes, expenses, setExpenses, goals, setGoals, isLoading } = useFinanceData();
+  
+  // --- ESTADOS DE SEGURIDAD (PIN LOCK) ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [savedPin, setSavedPin] = useState(() => localStorage.getItem('wp_pin'));
+  const [pinSetupStep, setPinSetupStep] = useState(savedPin ? 'enter' : 'create'); 
+  const [tempPin, setTempPin] = useState('');
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  // --- ESTADOS DE LA APP ---
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
-
-  // --- NUEVO ESTADO: MODO PRIVACIDAD ---
   const [isPrivate, setIsPrivate] = useState(false);
   const mask = (val) => isPrivate ? '••••••' : fmt.format(val);
 
@@ -94,7 +100,51 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
-  // Datos mes actual
+  // --- LÓGICA DE SEGURIDAD (PIN) ---
+  const handlePinPress = useCallback((digit) => {
+    if (enteredPin.length < 4) {
+      const newPin = enteredPin + digit;
+      setEnteredPin(newPin);
+      if (newPin.length === 4) {
+        setTimeout(() => processPin(newPin), 150);
+      }
+    }
+  }, [enteredPin, pinSetupStep, tempPin, savedPin]);
+
+  const processPin = (currentPin) => {
+    if (pinSetupStep === 'create') {
+      setTempPin(currentPin);
+      setEnteredPin('');
+      setPinSetupStep('confirm');
+    } else if (pinSetupStep === 'confirm') {
+      if (currentPin === tempPin) {
+        localStorage.setItem('wp_pin', currentPin);
+        setSavedPin(currentPin);
+        setIsAuthenticated(true);
+      } else {
+        triggerPinError('Los códigos no coinciden. Intenta de nuevo.', 'create');
+      }
+    } else if (pinSetupStep === 'enter') {
+      if (currentPin === savedPin) {
+        setIsAuthenticated(true);
+      } else {
+        triggerPinError('Código incorrecto.', 'enter');
+      }
+    }
+  };
+
+  const triggerPinError = (msg, nextStep) => {
+    setPinError(true);
+    // Vibración háptica si está disponible en el dispositivo
+    if (navigator.vibrate) navigator.vibrate(200); 
+    setTimeout(() => {
+      setEnteredPin('');
+      setPinError(false);
+      if (nextStep) setPinSetupStep(nextStep);
+    }, 600);
+  };
+
+  // --- DATOS FINANCIEROS Y MATEMÁTICAS ---
   const filteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(selectedMonth)), [incomes, selectedMonth]);
   const filteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(selectedMonth)), [expenses, selectedMonth]);
 
@@ -102,11 +152,10 @@ export default function App() {
   const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
 
-  // --- NUEVA LÓGICA: CÁLCULOS MES ANTERIOR PARA TENDENCIAS ---
   const prevMonthStr = useMemo(() => {
     const [y, m] = selectedMonth.split('-');
     const d = new Date(y, parseInt(m) - 1, 1);
-    d.setMonth(d.getMonth() - 1); // Restamos un mes
+    d.setMonth(d.getMonth() - 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }, [selectedMonth]);
 
@@ -118,14 +167,13 @@ export default function App() {
   const prevMonthNetFlow = prevMonthIncomeTotal - prevMonthExpenseTotal;
 
   const calcTrend = (current, prev) => {
-    if (prev === 0) return 0; // Evitar división por cero
+    if (prev === 0) return 0;
     return ((current - prev) / Math.abs(prev)) * 100;
   };
 
   const incomeTrend = calcTrend(monthIncomeTotal, prevMonthIncomeTotal);
   const expenseTrend = calcTrend(monthExpenseTotal, prevMonthExpenseTotal);
   const flowTrend = calcTrend(monthNetFlow, prevMonthNetFlow);
-  // -------------------------------------------------------------
 
   const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
   const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
@@ -161,111 +209,13 @@ export default function App() {
       .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
-  // Generar PDF (No usa "mask" porque el PDF siempre debe llevar datos reales)
-  const handleExportPDF = () => {
-    try {
-      const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(20, 20, 20);
-      doc.text('WealthPulse', 14, 22);
-      
-      doc.setFontSize(14);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
-
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
-      
-      autoTable(doc, {
-        startY: 50,
-        head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
-        body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
-        theme: 'grid',
-        headStyles: { fillColor: [52, 211, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 10, halign: 'center' }
-      });
-
-      let finalY = doc.lastAutoTable.finalY + 15;
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
-
-      autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
-        body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
-        theme: 'grid',
-        headStyles: { fillColor: [38, 38, 38], textColor: [255, 255, 255] },
-        styles: { fontSize: 10, halign: 'center' }
-      });
-
-      finalY = doc.lastAutoTable.finalY + 15;
-      doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
-      
-      const ingresosRows = filteredIncomes.map(i => [
-        i.date,
-        i.category,
-        i.note || '-',
-        fmt.format(i.amount),
-        Number(i.cost) > 0 ? fmt.format(i.cost) : '-',
-        fmt.format(Number(i.amount) - (Number(i.cost) || 0))
-      ]);
-
-      autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
-        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos este mes', '-', '-', '-']],
-        theme: 'striped',
-        headStyles: { fillColor: [52, 211, 153] },
-        styles: { fontSize: 9 }
-      });
-
-      finalY = doc.lastAutoTable.finalY + 15;
-      if (finalY > 250) {
-        doc.addPage();
-        finalY = 20;
-      }
-
-      doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
-      
-      const gastosRows = filteredExpenses.map(e => [
-        e.date,
-        e.category,
-        e.note || '-',
-        fmt.format(e.amount)
-      ]);
-
-      autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Monto del Gasto']],
-        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos este mes', '-']],
-        theme: 'striped',
-        headStyles: { fillColor: [244, 63, 94] },
-        styles: { fontSize: 9 }
-      });
-
-      doc.save(`WealthPulse_Reporte_${selectedMonth}.pdf`);
-    } catch (error) {
-      console.error("Error al exportar PDF:", error);
-      alert("Hubo un error generando el documento. Verifica los permisos de tu navegador.");
-    }
-  };
-
+  // --- CRUD FUNCTIONS ---
   const saveIncome = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(incomeForm.amount);
     const cost = parseFloat(incomeForm.cost) || 0;
-
-    if (isNaN(amount) || amount <= 0) {
-      alert('Por favor, ingresa un monto válido mayor a 0.');
-      return;
-    }
-    if (cost < 0) {
-      alert('El costo del insumo no puede ser negativo.');
-      return;
-    }
-
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido mayor a 0.');
+    if (cost < 0) return alert('El costo del insumo no puede ser negativo.');
     if (incomeForm.id) {
       const { data, error } = await supabase.from('incomes').update({ amount, cost, category: incomeForm.category, note: incomeForm.note, date: incomeForm.date }).eq('id', incomeForm.id).select();
       if (!error && data) setIncomes((prev) => prev.map((i) => (i.id === incomeForm.id ? data[0] : i)));
@@ -279,12 +229,7 @@ export default function App() {
   const saveExpense = useCallback(async (e) => {
     e.preventDefault();
     const amount = parseFloat(expenseForm.amount);
-
-    if (isNaN(amount) || amount <= 0) {
-      alert('Por favor, ingresa un monto de gasto válido mayor a 0.');
-      return;
-    }
-
+    if (isNaN(amount) || amount <= 0) return alert('Por favor, ingresa un monto válido mayor a 0.');
     if (expenseForm.id) {
       const { data, error } = await supabase.from('expenses').update({ amount, category: expenseForm.category, note: expenseForm.note, date: expenseForm.date }).eq('id', expenseForm.id).select();
       if (!error && data) setExpenses((prev) => prev.map((ex) => (ex.id === expenseForm.id ? data[0] : ex)));
@@ -299,16 +244,8 @@ export default function App() {
     e.preventDefault();
     const target = parseFloat(goalForm.target);
     const saved = parseFloat(goalForm.saved) || 0;
-
-    if (isNaN(target) || target <= 0) {
-      alert('La meta de capital debe ser mayor a 0.');
-      return;
-    }
-    if (saved < 0) {
-      alert('El capital ahorrado no puede ser negativo.');
-      return;
-    }
-
+    if (isNaN(target) || target <= 0) return alert('La meta de capital debe ser mayor a 0.');
+    if (saved < 0) return alert('El capital ahorrado no puede ser negativo.');
     if (goalForm.id) {
       const { data, error } = await supabase.from('goals').update({ name: goalForm.name, target, saved, deadline: goalForm.deadline, storage: goalForm.storage }).eq('id', goalForm.id).select();
       if (!error && data) setGoals((prev) => prev.map((g) => (g.id === goalForm.id ? data[0] : g)));
@@ -331,14 +268,83 @@ export default function App() {
   const confirmAddFunds = async (e) => {
     e.preventDefault();
     const deposit = parseFloat(fundModal.amount);
-    if (isNaN(deposit) || deposit <= 0) {
-      alert('Ingresa un monto de abono válido.');
-      return;
-    }
+    if (isNaN(deposit) || deposit <= 0) return alert('Ingresa un monto válido.');
     const newSavedAmount = Number(fundModal.goal.saved) + deposit;
     const { data, error } = await supabase.from('goals').update({ saved: newSavedAmount }).eq('id', fundModal.goal.id).select();
     if (!error && data) setGoals((prev) => prev.map((g) => (g.id === fundModal.goal.id ? data[0] : g)));
     setFundModal({ isOpen: false, goal: null, amount: '' });
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(22);
+      doc.setTextColor(20, 20, 20);
+      doc.text('WealthPulse', 14, 22);
+      doc.setFontSize(14);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
+      
+      autoTable(doc, {
+        startY: 50,
+        head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
+        body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
+        theme: 'grid',
+        headStyles: { fillColor: [52, 211, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 10, halign: 'center' }
+      });
+
+      let finalY = doc.lastAutoTable.finalY + 15;
+      doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
+
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
+        body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
+        theme: 'grid',
+        headStyles: { fillColor: [38, 38, 38], textColor: [255, 255, 255] },
+        styles: { fontSize: 10, halign: 'center' }
+      });
+
+      finalY = doc.lastAutoTable.finalY + 15;
+      doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
+      
+      const ingresosRows = filteredIncomes.map(i => [
+        i.date, i.category, i.note || '-', fmt.format(i.amount),
+        Number(i.cost) > 0 ? fmt.format(i.cost) : '-', fmt.format(Number(i.amount) - (Number(i.cost) || 0))
+      ]);
+
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
+        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos este mes', '-', '-', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [52, 211, 153] },
+        styles: { fontSize: 9 }
+      });
+
+      finalY = doc.lastAutoTable.finalY + 15;
+      if (finalY > 250) { doc.addPage(); finalY = 20; }
+
+      doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
+      const gastosRows = filteredExpenses.map(e => [e.date, e.category, e.note || '-', fmt.format(e.amount)]);
+
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Monto del Gasto']],
+        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos este mes', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [244, 63, 94] },
+        styles: { fontSize: 9 }
+      });
+      doc.save(`WealthPulse_Reporte_${selectedMonth}.pdf`);
+    } catch (error) {
+      console.error("Error al exportar PDF:", error);
+      alert("Hubo un error generando el documento.");
+    }
   };
 
   const CustomBarTooltip = ({ active, payload, label }) => {
@@ -371,14 +377,87 @@ export default function App() {
     return null;
   };
 
-  if (isLoading)
+  // --- RENDER 1: PANTALLA DE BLOQUEO (PIN LOCK) ---
+  if (!isAuthenticated) {
+    let instruction = 'Ingresa tu PIN';
+    if (pinSetupStep === 'create') instruction = 'Crea un PIN de 4 dígitos';
+    if (pinSetupStep === 'confirm') instruction = 'Confirma tu nuevo PIN';
+
     return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-emerald-400 font-mono space-y-4">
-        <Icon.Pulse className="h-10 w-10 animate-bounce" />
-        <span className="animate-pulse tracking-widest text-sm">Cargando Sistema...</span>
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 antialiased font-sans">
+        <div className="flex flex-col items-center max-w-sm w-full animate-fade-in-up">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-neutral-800 to-neutral-900 shadow-2xl border border-neutral-700/50 flex items-center justify-center mb-8">
+            <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">WealthPulse</h2>
+          <p className="text-neutral-500 text-sm font-medium mb-10 h-5 transition-all">{instruction}</p>
+
+          {/* Dots Indicator */}
+          <div className={`flex gap-4 justify-center mb-12 transition-transform duration-200 ${pinError ? 'translate-x-2' : ''}`}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className={`w-3.5 h-3.5 rounded-full transition-colors duration-300 ${
+                pinError ? 'bg-rose-500' : enteredPin.length > i ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-neutral-800'
+              }`} />
+            ))}
+          </div>
+
+          {/* Keypad */}
+          <div className="grid grid-cols-3 gap-5 w-full max-w-[280px]">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-20 h-20 mx-auto rounded-full bg-neutral-900/60 border border-neutral-800/40 text-2xl font-light text-white hover:bg-neutral-800 active:bg-neutral-700 active:scale-95 transition-all backdrop-blur-md flex items-center justify-center">
+                {num}
+              </button>
+            ))}
+            <div />
+            <button onClick={() => handlePinPress('0')} className="w-20 h-20 mx-auto rounded-full bg-neutral-900/60 border border-neutral-800/40 text-2xl font-light text-white hover:bg-neutral-800 active:bg-neutral-700 active:scale-95 transition-all backdrop-blur-md flex items-center justify-center">
+              0
+            </button>
+            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-20 h-20 mx-auto rounded-full flex items-center justify-center text-neutral-500 hover:text-white hover:bg-neutral-900/30 active:scale-95 transition-all">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
+            </button>
+          </div>
+        </div>
       </div>
     );
+  }
 
+  // --- RENDER 2: SKELETONS (CARGA FANTASMA AL ESTILO APPLE) ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-950 p-4 sm:p-6 lg:p-8 antialiased">
+        <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
+          {/* Header Skeleton */}
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-5 border-b border-neutral-800/80 pb-6">
+            <div className="flex gap-4 items-center">
+              <div className="w-12 h-12 bg-neutral-900 rounded-2xl"></div>
+              <div className="space-y-2">
+                <div className="w-32 h-6 bg-neutral-900 rounded"></div>
+                <div className="w-20 h-3 bg-neutral-900 rounded"></div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-32 h-10 bg-neutral-900 rounded-xl"></div>
+              <div className="w-10 h-10 bg-neutral-900 rounded-xl"></div>
+              <div className="w-24 h-10 bg-neutral-900 rounded-xl"></div>
+            </div>
+          </div>
+          {/* Big Card Skeleton */}
+          <div className="w-full h-56 bg-gradient-to-b from-neutral-900/50 to-neutral-900/10 rounded-[2rem] border border-neutral-800/40"></div>
+          {/* 3 Small Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
+            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
+            <div className="h-36 bg-neutral-900/40 rounded-3xl border border-neutral-800/40"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDER 3: APLICACIÓN PRINCIPAL ---
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased font-sans transition-colors duration-500 relative">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 pb-28 lg:pb-8">
@@ -421,14 +500,9 @@ export default function App() {
               title={isPrivate ? "Mostrar montos" : "Ocultar montos"}
             >
               {isPrivate ? (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
               ) : (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
               )}
             </button>
 
@@ -438,9 +512,7 @@ export default function App() {
               className="flex items-center justify-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-emerald-600 px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md active:scale-95 border border-neutral-700/50"
               title="Descargar Estado de Cuenta en PDF"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               <span className="hidden sm:inline">Exportar</span>
             </button>
           </div>
@@ -474,7 +546,6 @@ export default function App() {
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
           
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            {/* TARJETAS CON INDICADORES DE RENDIMIENTO */}
             <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl flex flex-col justify-between">
               <div className="flex justify-between items-start mb-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Ingresos Neto</p>
@@ -627,20 +698,9 @@ export default function App() {
               </form>
               
               <div className="border-t border-neutral-800/40 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowIncomesHistory(!showIncomesHistory)}
-                  className="w-full flex items-center justify-between py-2 group focus:outline-none"
-                >
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-emerald-400 transition-colors">
-                    Historial Reciente
-                  </h3>
-                  <svg 
-                    className={`w-4 h-4 text-neutral-500 group-hover:text-emerald-400 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} 
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full flex items-center justify-between py-2 group focus:outline-none">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-emerald-400 transition-colors">Historial Reciente</h3>
+                  <svg className={`w-4 h-4 text-neutral-500 group-hover:text-emerald-400 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
 
                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showIncomesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
@@ -650,18 +710,14 @@ export default function App() {
                       return (
                         <li key={i.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
                           <div className="text-sm">
-                            <p className="text-neutral-100 font-medium">
-                              {i.category} {i.note && <span className="text-neutral-500 font-normal ml-1">· {i.note}</span>}
-                            </p>
+                            <p className="text-neutral-100 font-medium">{i.category} {i.note && <span className="text-neutral-500 font-normal ml-1">· {i.note}</span>}</p>
                             <div className="flex gap-2 items-center mt-1">
                               <span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(i.date)}</span>
                               {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: {mask(i.amount)}</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
-                            <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>
-                              +{mask(net)}
-                            </span>
+                            <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-emerald-400'}`}>+{mask(net)}</span>
                             <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
                               <button onClick={() => setIncomeForm(i)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
                               <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
@@ -701,20 +757,9 @@ export default function App() {
               </form>
 
               <div className="border-t border-neutral-800/40 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowExpensesHistory(!showExpensesHistory)}
-                  className="w-full flex items-center justify-between py-2 group focus:outline-none"
-                >
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-rose-400 transition-colors">
-                    Historial Reciente
-                  </h3>
-                  <svg 
-                    className={`w-4 h-4 text-neutral-500 group-hover:text-rose-400 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} 
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full flex items-center justify-between py-2 group focus:outline-none">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-rose-400 transition-colors">Historial Reciente</h3>
+                  <svg className={`w-4 h-4 text-neutral-500 group-hover:text-rose-400 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
 
                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showExpensesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
@@ -722,15 +767,11 @@ export default function App() {
                     {filteredExpenses.map((e) => (
                       <li key={e.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
                         <div className="text-sm">
-                          <p className="text-neutral-100 font-medium">
-                            {e.category} {e.note && <span className="text-neutral-500 font-normal ml-1">· {e.note}</span>}
-                          </p>
+                          <p className="text-neutral-100 font-medium">{e.category} {e.note && <span className="text-neutral-500 font-normal ml-1">· {e.note}</span>}</p>
                           <div className="mt-1"><span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(e.date)}</span></div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>
-                            -{mask(e.amount)}
-                          </span>
+                          <span className={`font-mono text-[15px] font-semibold ${isPrivate ? 'text-neutral-600' : 'text-rose-400'}`}>-{mask(e.amount)}</span>
                           <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
                             <button onClick={() => setExpenseForm(e)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
                             <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
