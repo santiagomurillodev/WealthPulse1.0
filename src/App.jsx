@@ -11,22 +11,12 @@ const INCOME_CATEGORIES = ['Salario Base', 'Reparaciones', 'Ventas', 'Extra'];
 const EXPENSE_CATEGORIES = ['Comida', 'Servicios', 'Insumos Taller/Refacciones', 'Transporte', 'Gustos'];
 const STORAGE_OPTIONS = ['Tarjeta', 'Efectivo', 'Cuenta de Ahorro', 'Inversión'];
 
-const IOS_COLORS = {
-  green: '#34C759',
-  red: '#FF3B30',
-  blue: '#0A84FF',
-  gray: '#8E8E93',
-  bgCard: '#1C1C1E',
-  bgRoot: '#000000',
-  separator: '#38383A'
-};
-
 const EXPENSE_COLORS = {
-  'Comida': '#FF9500', 
-  'Servicios': '#5E5CE6', 
-  'Insumos Taller/Refacciones': '#32ADE6', 
-  'Transporte': '#0A84FF', 
-  'Gustos': '#FF2D55'  
+  'Comida': '#F59E0B', 
+  'Servicios': '#8B5CF6', 
+  'Insumos Taller/Refacciones': '#06B6D4', 
+  'Transporte': '#3B82F6', 
+  'Gustos': '#EC4899'  
 };
 
 const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
@@ -47,47 +37,57 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- COMPONENTES UI ESTILO NATIVO DE iOS --- */
-const IOSSection = ({ eyebrow, children }) => (
-  <div className="mb-6 w-full">
-    {eyebrow && <h2 className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">{eyebrow}</h2>}
-    <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
-      {children}
-    </div>
+/* --- COMPONENTES LIQUID GLASS (iOS 26 / VisionOS Style) --- */
+const GlassCard = ({ children, className = '' }) => (
+  <div className={`bg-white/[0.04] backdrop-blur-[40px] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-[32px] ${className}`}>
+    {children}
   </div>
 );
 
-const IOSRow = ({ label, children, isLast = false, rightAlign = false }) => (
-  <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-[#1C1C1E] ${!isLast ? 'border-b border-[#38383A]' : ''} min-h-[54px]`}>
-    <span className="text-[17px] text-white w-full sm:w-1/3 mb-1 sm:mb-0 font-medium">{label}</span>
-    <div className={`w-full sm:w-2/3 ${rightAlign ? 'text-right' : ''}`}>
-      {children}
-    </div>
-  </div>
+const GlassInput = (props) => (
+  <input 
+    {...props} 
+    className={`w-full bg-black/20 backdrop-blur-xl border border-white/10 rounded-[20px] px-5 py-4 text-[17px] text-white outline-none placeholder:text-white/40 focus:border-emerald-500/50 focus:bg-white/[0.05] transition-all shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] ${props.className || ''}`}
+  />
 );
+
+const GlassSelect = (props) => (
+  <select 
+    {...props} 
+    className={`w-full bg-black/20 backdrop-blur-xl border border-white/10 rounded-[20px] px-5 py-4 text-[17px] text-white outline-none focus:border-emerald-500/50 focus:bg-white/[0.05] transition-all shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] appearance-none ${props.className || ''}`}
+  >
+    {props.children}
+  </select>
+);
+
+const GlassButton = ({ children, onClick, type = "button", variant = 'primary', className = '' }) => {
+  const baseStyle = "w-full rounded-[20px] px-5 py-4 text-[17px] font-bold tracking-wide transition-all active:scale-[0.97] flex justify-center items-center gap-2";
+  const variants = {
+    primary: "bg-gradient-to-r from-emerald-500 to-teal-400 text-black shadow-[0_0_20px_rgba(52,211,153,0.3)] hover:shadow-[0_0_30px_rgba(52,211,153,0.5)] border border-white/20",
+    danger: "bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] border border-white/20",
+    glass: "bg-white/10 backdrop-blur-md text-white border border-white/10 hover:bg-white/20"
+  };
+  return <button type={type} onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>{children}</button>;
+};
 
 const TrendBadge = ({ value, invertColors = false }) => {
-  if (value === 0 || isNaN(value)) {
-    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg text-[#8E8E93] bg-[#2C2C2E]">≈ 0%</span>;
-  }
+  if (value === 0 || isNaN(value)) return <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-white/50 bg-white/5 border border-white/10 backdrop-blur-md">≈ 0%</span>;
   const isPositive = value > 0;
   const isGood = invertColors ? !isPositive : isPositive;
-  const colorCls = isGood ? 'text-[#34C759] bg-[#34C759]/10' : 'text-[#FF3B30] bg-[#FF3B30]/10';
+  const colorCls = isGood ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-400 bg-rose-500/10 border-rose-500/20';
   const icon = isPositive ? '↑' : '↓';
-  
   return (
-    <span className={`text-[12px] font-bold px-2 py-1 rounded-lg flex items-center gap-0.5 w-max ${colorCls}`}>
+    <span className={`text-[12px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max border backdrop-blur-md shadow-inner ${colorCls}`}>
       {icon} {Math.abs(value).toFixed(1)}%
     </span>
   );
 };
 
-const inputCls = 'w-full bg-transparent text-[17px] text-white outline-none placeholder:text-[#8E8E93]';
-
 /* ------------------------------- APP PRINCIPAL ------------------------------- */
 export default function App() {
   const { incomes, setIncomes, expenses, setExpenses, goals, setGoals, isLoading } = useFinanceData();
   
+  // ESTADOS DE SEGURIDAD
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [savedPin, setSavedPin] = useState(() => localStorage.getItem('wp_pin'));
   const [pinSetupStep, setPinSetupStep] = useState(savedPin ? 'enter' : 'create'); 
@@ -95,16 +95,17 @@ export default function App() {
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
 
+  // ESTADOS GLOBALES
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
   const [isPrivate, setIsPrivate] = useState(false);
   const mask = (val) => isPrivate ? '••••••' : fmt.format(val);
 
-  // Estados restaurados para los acordeones
   const [showIncomesHistory, setShowIncomesHistory] = useState(false);
   const [showExpensesHistory, setShowExpensesHistory] = useState(false);
-
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+
+  // ESTADOS FORMULARIOS
   const [qAmount, setQAmount] = useState('');
   const [qCategory, setQCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [qNote, setQNote] = useState('');
@@ -116,50 +117,36 @@ export default function App() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, table: null, id: null, setFn: null });
   const [fundModal, setFundModal] = useState({ isOpen: false, goal: null, amount: '' });
 
+  // LOGICA PIN
   const handlePinPress = useCallback((digit) => {
     if (enteredPin.length < 4) {
       const newPin = enteredPin + digit;
       setEnteredPin(newPin);
-      if (newPin.length === 4) {
-        setTimeout(() => processPin(newPin), 150);
-      }
+      if (newPin.length === 4) setTimeout(() => processPin(newPin), 150);
     }
   }, [enteredPin, pinSetupStep, tempPin, savedPin]);
 
   const processPin = (currentPin) => {
     if (pinSetupStep === 'create') {
-      setTempPin(currentPin);
-      setEnteredPin('');
-      setPinSetupStep('confirm');
+      setTempPin(currentPin); setEnteredPin(''); setPinSetupStep('confirm');
     } else if (pinSetupStep === 'confirm') {
       if (currentPin === tempPin) {
-        localStorage.setItem('wp_pin', currentPin);
-        setSavedPin(currentPin);
-        setIsAuthenticated(true);
-      } else {
-        triggerPinError('Los códigos no coinciden.', 'create');
-      }
+        localStorage.setItem('wp_pin', currentPin); setSavedPin(currentPin); setIsAuthenticated(true);
+      } else triggerPinError('No coinciden', 'create');
     } else if (pinSetupStep === 'enter') {
-      if (currentPin === savedPin) {
-        setIsAuthenticated(true);
-      } else {
-        triggerPinError('Código incorrecto', 'enter');
-      }
+      if (currentPin === savedPin) setIsAuthenticated(true);
+      else triggerPinError('Incorrecto', 'enter');
     }
   };
 
-  const triggerPinError = (msg, nextStep) => {
+  const triggerPinError = () => {
     setPinError(true);
-    setTimeout(() => {
-      setEnteredPin('');
-      setPinError(false);
-      if (nextStep) setPinSetupStep(nextStep);
-    }, 500);
+    setTimeout(() => { setEnteredPin(''); setPinError(false); }, 500);
   };
 
+  // DATOS MATEMÁTICOS Y FILTROS
   const filteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(selectedMonth)), [incomes, selectedMonth]);
   const filteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(selectedMonth)), [expenses, selectedMonth]);
-
   const monthIncomeTotal = filteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
   const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
@@ -173,23 +160,17 @@ export default function App() {
 
   const prevFilteredIncomes = useMemo(() => incomes.filter((i) => i.date.startsWith(prevMonthStr)), [incomes, prevMonthStr]);
   const prevFilteredExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(prevMonthStr)), [expenses, prevMonthStr]);
-
   const prevMonthIncomeTotal = prevFilteredIncomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0);
   const prevMonthExpenseTotal = prevFilteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const prevMonthNetFlow = prevMonthIncomeTotal - prevMonthExpenseTotal;
 
-  const calcTrend = (current, prev) => {
-    if (prev === 0) return 0;
-    return ((current - prev) / Math.abs(prev)) * 100;
-  };
-
+  const calcTrend = (current, prev) => prev === 0 ? 0 : ((current - prev) / Math.abs(prev)) * 100;
   const incomeTrend = calcTrend(monthIncomeTotal, prevMonthIncomeTotal);
   const expenseTrend = calcTrend(monthExpenseTotal, prevMonthExpenseTotal);
   const flowTrend = calcTrend(monthNetFlow, prevMonthNetFlow);
 
   const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
   const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
-  
   const capitalTotal = historicalIncomeTotal - historicalExpenseTotal;
   const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
   const availableCash = capitalTotal - totalSavedInGoals;
@@ -198,47 +179,29 @@ export default function App() {
     const [year, month] = selectedMonth.split('-');
     const daysInMonth = new Date(year, month, 0).getDate();
     const data = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, ingresos: 0, gastos: 0 }));
-
-    filteredIncomes.forEach(inc => {
-      const dayIdx = parseInt(inc.date.split('-')[2]) - 1;
-      if(data[dayIdx]) data[dayIdx].ingresos += (Number(inc.amount) - (Number(inc.cost)||0));
-    });
-    filteredExpenses.forEach(exp => {
-      const dayIdx = parseInt(exp.date.split('-')[2]) - 1;
-      if(data[dayIdx]) data[dayIdx].gastos += Number(exp.amount);
-    });
+    filteredIncomes.forEach(inc => { const dayIdx = parseInt(inc.date.split('-')[2]) - 1; if(data[dayIdx]) data[dayIdx].ingresos += (Number(inc.amount) - (Number(inc.cost)||0)); });
+    filteredExpenses.forEach(exp => { const dayIdx = parseInt(exp.date.split('-')[2]) - 1; if(data[dayIdx]) data[dayIdx].gastos += Number(exp.amount); });
     return data;
   }, [filteredIncomes, filteredExpenses, selectedMonth]);
 
   const expenseBreakdown = useMemo(() => {
     const breakdown = {};
-    filteredExpenses.forEach(exp => {
-      if (!breakdown[exp.category]) breakdown[exp.category] = 0;
-      breakdown[exp.category] += Number(exp.amount);
-    });
-    return Object.keys(breakdown)
-      .map(key => ({ name: key, value: breakdown[key] }))
-      .sort((a, b) => b.value - a.value);
+    filteredExpenses.forEach(exp => { if (!breakdown[exp.category]) breakdown[exp.category] = 0; breakdown[exp.category] += Number(exp.amount); });
+    return Object.keys(breakdown).map(key => ({ name: key, value: breakdown[key] })).sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
 
+  // CRUD GASTO RÁPIDO
   const handleQuickExpense = async (e) => {
-    e.preventDefault();
-    const amount = parseFloat(qAmount);
-    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
-
+    e.preventDefault(); const amount = parseFloat(qAmount);
+    if (isNaN(amount) || amount <= 0) return alert('Monto inválido.');
     const { data, error } = await supabase.from('expenses').insert([{ amount, category: qCategory, note: qNote, date: todayISO() }]).select();
-    if (!error && data) {
-      setExpenses((prev) => [data[0], ...prev]);
-      setIsQuickAddOpen(false);
-      setQAmount(''); setQNote(''); setQCategory(EXPENSE_CATEGORIES[0]);
-    } else alert("Error al guardar el gasto.");
+    if (!error && data) { setExpenses((prev) => [data[0], ...prev]); setIsQuickAddOpen(false); setQAmount(''); setQNote(''); setQCategory(EXPENSE_CATEGORIES[0]); }
   };
 
+  // CRUD INGRESOS
   const saveIncome = useCallback(async (e) => {
-    e.preventDefault();
-    const amount = parseFloat(incomeForm.amount);
-    const cost = parseFloat(incomeForm.cost) || 0;
-    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
+    e.preventDefault(); const amount = parseFloat(incomeForm.amount); const cost = parseFloat(incomeForm.cost) || 0;
+    if (isNaN(amount) || amount <= 0) return alert('Monto inválido.');
     if (cost < 0) return alert('Costo inválido.');
     
     if (incomeForm.id) {
@@ -251,10 +214,10 @@ export default function App() {
     setIncomeForm({ id: null, amount: '', cost: '', category: INCOME_CATEGORIES[0], note: '', date: todayISO() });
   }, [incomeForm]);
 
+  // CRUD GASTOS
   const saveExpense = useCallback(async (e) => {
-    e.preventDefault();
-    const amount = parseFloat(expenseForm.amount);
-    if (isNaN(amount) || amount <= 0) return alert('Ingresa un monto válido.');
+    e.preventDefault(); const amount = parseFloat(expenseForm.amount);
+    if (isNaN(amount) || amount <= 0) return alert('Monto inválido.');
     if (expenseForm.id) {
       const { data, error } = await supabase.from('expenses').update({ amount, category: expenseForm.category, note: expenseForm.note, date: expenseForm.date }).eq('id', expenseForm.id).select();
       if (!error && data) setExpenses((prev) => prev.map((ex) => (ex.id === expenseForm.id ? data[0] : ex)));
@@ -265,10 +228,9 @@ export default function App() {
     setExpenseForm({ id: null, amount: '', category: EXPENSE_CATEGORIES[0], note: '', date: todayISO() });
   }, [expenseForm]);
 
+  // CRUD METAS
   const saveGoal = useCallback(async (e) => {
-    e.preventDefault();
-    const target = parseFloat(goalForm.target);
-    const saved = parseFloat(goalForm.saved) || 0;
+    e.preventDefault(); const target = parseFloat(goalForm.target); const saved = parseFloat(goalForm.saved) || 0;
     if (isNaN(target) || target <= 0) return alert('Meta inválida.');
     if (saved < 0) return alert('Ahorro inválido.');
     
@@ -284,17 +246,15 @@ export default function App() {
 
   const handleDeleteClick = (table, id, setFn) => setDeleteModal({ isOpen: true, table, id, setFn });
   const confirmDelete = async () => {
-    const { table, id, setFn } = deleteModal;
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const { table, id, setFn } = deleteModal; const { error } = await supabase.from(table).delete().eq('id', id);
     if (!error) setFn((prev) => prev.filter((item) => item.id !== id));
     setDeleteModal({ isOpen: false, table: null, id: null, setFn: null });
   };
 
   const handleAddFundsClick = (goal) => setFundModal({ isOpen: true, goal, amount: '' });
   const confirmAddFunds = async (e) => {
-    e.preventDefault();
-    const deposit = parseFloat(fundModal.amount);
-    if (isNaN(deposit) || deposit <= 0) return alert('Ingresa un abono válido.');
+    e.preventDefault(); const deposit = parseFloat(fundModal.amount);
+    if (isNaN(deposit) || deposit <= 0) return alert('Monto inválido.');
     const newSavedAmount = Number(fundModal.goal.saved) + deposit;
     const { data, error } = await supabase.from('goals').update({ saved: newSavedAmount }).eq('id', fundModal.goal.id).select();
     if (!error && data) setGoals((prev) => prev.map((g) => (g.id === fundModal.goal.id ? data[0] : g)));
@@ -304,60 +264,20 @@ export default function App() {
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF();
-      doc.setFontSize(22); doc.setTextColor(20, 20, 20); doc.text('WealthPulse', 14, 22);
-      doc.setFontSize(14); doc.setTextColor(100, 100, 100); doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
-      
-      doc.setFontSize(12); doc.setTextColor(0, 0, 0); doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
-      autoTable(doc, {
-        startY: 50, head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
-        body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
-        theme: 'grid', headStyles: { fillColor: [52, 199, 89], textColor: [255, 255, 255], fontStyle: 'bold' }, styles: { fontSize: 10, halign: 'center' }
-      });
-
-      let finalY = doc.lastAutoTable.finalY + 15;
-      doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
-      autoTable(doc, {
-        startY: finalY + 5, head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
-        body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
-        theme: 'grid', headStyles: { fillColor: [28, 28, 30], textColor: [255, 255, 255] }, styles: { fontSize: 10, halign: 'center' }
-      });
-
-      finalY = doc.lastAutoTable.finalY + 15;
-      doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
-      const ingresosRows = filteredIncomes.map(i => [
-        i.date, i.category, i.note || '-', fmt.format(i.amount),
-        Number(i.cost) > 0 ? fmt.format(i.cost) : '-', fmt.format(Number(i.amount) - (Number(i.cost) || 0))
-      ]);
-      autoTable(doc, {
-        startY: finalY + 5, head: [['Fecha', 'Categoría', 'Concepto', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
-        body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos', '-', '-', '-']],
-        theme: 'striped', headStyles: { fillColor: [52, 199, 89] }, styles: { fontSize: 9 }
-      });
-
-      finalY = doc.lastAutoTable.finalY + 15;
-      if (finalY > 250) { doc.addPage(); finalY = 20; }
-
-      doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
-      const gastosRows = filteredExpenses.map(e => [e.date, e.category, e.note || '-', fmt.format(e.amount)]);
-      autoTable(doc, {
-        startY: finalY + 5, head: [['Fecha', 'Categoría', 'Concepto', 'Monto del Gasto']],
-        body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos', '-']],
-        theme: 'striped', headStyles: { fillColor: [255, 59, 48] }, styles: { fontSize: 9 }
-      });
+      doc.setFontSize(22); doc.text('WealthPulse', 14, 22); doc.setFontSize(14); doc.text(`Reporte - ${selectedMonth}`, 14, 30);
+      autoTable(doc, { startY: 40, head: [['Patrimonio', 'Ahorrado', 'Libre']], body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]] });
+      autoTable(doc, { head: [['Ingresos', 'Gastos', 'Flujo Neto']], body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]] });
       doc.save(`WealthPulse_${selectedMonth}.pdf`);
-    } catch (error) {
-      console.error("Error al exportar PDF:", error);
-      alert("Error generando el documento.");
-    }
+    } catch (error) { alert("Error al exportar PDF."); }
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#1C1C1E]/90 backdrop-blur-xl border border-[#38383A] p-3 rounded-[14px] shadow-2xl">
-          <p className="text-[#8E8E93] text-xs font-semibold mb-1 uppercase tracking-wider">{payload[0].name || `Día ${label}`}</p>
+        <div className="bg-black/60 backdrop-blur-3xl border border-white/10 p-4 rounded-[20px] shadow-2xl">
+          <p className="text-white/60 text-xs font-bold mb-2 uppercase tracking-widest">{payload[0].name || `Día ${label}`}</p>
           {payload.map((entry, index) => (
-            <p key={index} className={`text-[15px] font-bold ${entry.dataKey === 'ingresos' ? 'text-[#34C759]' : entry.dataKey === 'gastos' ? 'text-[#FF3B30]' : 'text-white'}`}>
+            <p key={index} className={`text-[17px] font-bold tracking-wide ${entry.dataKey === 'ingresos' ? 'text-emerald-400' : entry.dataKey === 'gastos' ? 'text-rose-400' : 'text-white'}`}>
               {entry.dataKey === 'ingresos' ? '+' : entry.dataKey === 'gastos' ? '-' : ''}{mask(entry.value)}
             </p>
           ))}
@@ -367,435 +287,443 @@ export default function App() {
     return null;
   };
 
+  // --- RENDER 1: PANTALLA PIN (GLASSMORPHISM) ---
   if (!isAuthenticated) {
-    let instruction = 'Introduce tu código';
-    if (pinSetupStep === 'create') instruction = 'Crea un código de 4 dígitos';
-    if (pinSetupStep === 'confirm') instruction = 'Verifica tu nuevo código';
-
+    let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 font-sans">
-        <div className="flex flex-col items-center max-w-[300px] w-full mt-[-10vh]">
-          <h2 className="text-[22px] text-white font-medium mb-4">{instruction}</h2>
+      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+        <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
+        
+        <GlassCard className="relative z-10 w-full max-w-[340px] p-8 flex flex-col items-center border-t-white/20 border-l-white/20">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(52,211,153,0.4)]">
+            <Icon.Pulse className="h-8 w-8 text-black" />
+          </div>
+          <h2 className="text-[22px] text-white font-bold tracking-tight mb-8 text-center">{instruction}</h2>
           
-          <div className={`flex gap-[22px] justify-center mb-16 transition-transform duration-200 ${pinError ? 'translate-x-2' : ''}`}>
+          <div className={`flex gap-5 justify-center mb-10 transition-transform duration-200 ${pinError ? 'translate-x-3' : ''}`}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className={`w-[13px] h-[13px] rounded-full transition-colors duration-200 ${
-                pinError ? 'bg-[#FF3B30]' : enteredPin.length > i ? 'bg-white' : 'border border-white/40'
-              }`} />
+              <div key={i} className={`w-4 h-4 rounded-full transition-all duration-300 ${pinError ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]' : enteredPin.length > i ? 'bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)] scale-110' : 'bg-white/10 border border-white/20'}`} />
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-x-6 gap-y-4 w-full">
+          <div className="grid grid-cols-3 gap-x-4 gap-y-4 w-full">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-[75px] h-[75px] mx-auto rounded-full bg-[#333333] hover:bg-[#444444] active:bg-[#555555] text-[36px] font-normal text-white transition-colors flex items-center justify-center">
+              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-[72px] h-[72px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">
                 {num}
               </button>
             ))}
             <div />
-            <button onClick={() => handlePinPress('0')} className="w-[75px] h-[75px] mx-auto rounded-full bg-[#333333] hover:bg-[#444444] active:bg-[#555555] text-[36px] font-normal text-white transition-colors flex items-center justify-center">
-              0
-            </button>
-            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-[75px] h-[75px] mx-auto rounded-full flex items-center justify-center text-white active:bg-[#333333] transition-colors">
-              <span className="text-[17px] font-semibold">Borrar</span>
+            <button onClick={() => handlePinPress('0')} className="w-[72px] h-[72px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">0</button>
+            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-[72px] h-[72px] mx-auto rounded-full flex items-center justify-center text-white/50 hover:text-white active:scale-95 transition-all">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
             </button>
           </div>
-        </div>
+        </GlassCard>
       </div>
     );
   }
 
+  // --- RENDER 2: SKELETONS (LIQUID GLASS NATIVE) ---
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black p-4 sm:p-6 lg:p-8 antialiased">
-        <div className="max-w-7xl mx-auto space-y-8 animate-pulse pt-4">
+      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
+        <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto space-y-8 pt-6">
           <div className="flex justify-between items-end">
-            <div className="w-48 h-10 bg-[#1C1C1E] rounded-xl"></div>
-            <div className="flex gap-2">
-              <div className="w-8 h-8 bg-[#1C1C1E] rounded-full"></div>
-              <div className="w-8 h-8 bg-[#1C1C1E] rounded-full"></div>
+            <div className="w-48 h-10 bg-white/5 backdrop-blur-md rounded-xl animate-pulse"></div>
+            <div className="flex gap-3">
+              <div className="w-10 h-10 bg-white/5 backdrop-blur-md rounded-full animate-pulse"></div>
+              <div className="w-10 h-10 bg-white/5 backdrop-blur-md rounded-full animate-pulse"></div>
             </div>
           </div>
-          <div className="w-full h-32 bg-[#1C1C1E] rounded-[20px]"></div>
+          <div className="w-full h-40 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
-            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
-            <div className="h-28 bg-[#1C1C1E] rounded-[20px]"></div>
+            <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
+            <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
+            <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
         </div>
       </div>
     );
   }
 
+  // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <div className="min-h-screen bg-black text-white antialiased font-sans transition-colors duration-500 relative pb-[90px]">
-      
-      <header className="pt-10 pb-4 px-4 sm:px-6 max-w-7xl mx-auto">
-        <div className="flex justify-between items-end">
-          <h1 className="text-[34px] font-bold tracking-tight leading-none">WealthPulse</h1>
-          
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsPrivate(!isPrivate)} className="text-[#0A84FF] bg-[#0A84FF]/10 p-2 rounded-full active:opacity-70 transition-opacity">
-              {isPrivate ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              )}
-            </button>
-            <button onClick={handleExportPDF} className="text-[#0A84FF] font-semibold text-[17px] active:opacity-70 transition-opacity">
-              Exportar
-            </button>
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] mix-blend-screen"></div>
+        <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] mix-blend-screen"></div>
+        <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
+      </div>
 
-        <div className="mt-4 bg-[#1C1C1E] rounded-xl p-1 shadow-sm flex items-center justify-between w-full max-w-sm">
-          <input type="month" className="w-full bg-transparent text-[15px] font-semibold text-center text-white outline-none cursor-pointer py-1" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        <div className="text-center mb-8 mt-2">
-          <p className="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider mb-1">Balance Total</p>
-          <h2 className={`text-[52px] font-bold tracking-tighter leading-none ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>
+        {/* CABECERA */}
+        <header className="flex flex-col sm:flex-row justify-between items-end mb-8 gap-4">
+          <div>
+            <h1 className="text-[40px] font-extrabold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/50 mb-1">
+              WealthPulse
+            </h1>
+            <p className="text-[13px] text-emerald-400 font-mono tracking-widest uppercase flex items-center gap-2">
+              <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+              Real-Time Sync
+            </p>
+          </div>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            <GlassSelect className="py-2.5 px-4 text-[15px] !w-auto" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              <option value={selectedMonth}>{selectedMonth}</option>
+            </GlassSelect>
+            <GlassButton variant="glass" className="!w-auto !p-3" onClick={() => setIsPrivate(!isPrivate)}>
+              {isPrivate ? <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> 
+              : <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+            </GlassButton>
+            <GlassButton variant="glass" className="!w-auto !p-3" onClick={handleExportPDF}>
+              <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            </GlassButton>
+          </div>
+        </header>
+
+        {/* BALANCE TOTAL */}
+        <div className="text-center mb-10">
+          <p className="text-[12px] text-white/50 font-bold uppercase tracking-[0.2em] mb-2">Patrimonio Global</p>
+          <h2 className="text-[60px] sm:text-[80px] font-extrabold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 drop-shadow-2xl">
             {mask(capitalTotal)}
           </h2>
-          <div className="flex justify-center items-center gap-4 mt-3">
-            <span className="text-[13px] text-[#8E8E93]">Metas: <span className="text-white font-medium">{mask(totalSavedInGoals)}</span></span>
-            <div className="w-1 h-1 bg-[#38383A] rounded-full"></div>
-            <span className="text-[13px] text-[#8E8E93]">Libre: <span className="text-white font-medium">{mask(availableCash)}</span></span>
+          <div className="flex justify-center items-center gap-6 mt-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full w-max mx-auto px-6 py-2">
+            <span className="text-[14px] text-white/60 font-medium">Metas <span className="text-white ml-1">{mask(totalSavedInGoals)}</span></span>
+            <div className="w-1 h-1 bg-white/20 rounded-full"></div>
+            <span className="text-[14px] text-white/60 font-medium">Libre <span className="text-emerald-400 ml-1">{mask(availableCash)}</span></span>
           </div>
         </div>
 
-        {/* --- PESTAÑA: RESUMEN --- */}
-        <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'}`}>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[15px] font-semibold text-[#8E8E93]">Ingresos</span>
+        {/* PESTAÑA: RESUMEN */}
+        <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} animate-fade-in`}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+            <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
+              <div className="flex justify-between items-start mb-6">
+                <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Ingresos</span>
                 <TrendBadge value={incomeTrend} />
               </div>
-              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>{mask(monthIncomeTotal)}</p>
-            </div>
+              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]'}`}>{mask(monthIncomeTotal)}</p>
+            </GlassCard>
             
-            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[15px] font-semibold text-[#8E8E93]">Gastos</span>
+            <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
+              <div className="flex justify-between items-start mb-6">
+                <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Gastos</span>
                 <TrendBadge value={expenseTrend} invertColors={true} />
               </div>
-              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : 'text-white'}`}>{mask(monthExpenseTotal)}</p>
-            </div>
+              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : 'text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.3)]'}`}>{mask(monthExpenseTotal)}</p>
+            </GlassCard>
 
-            <div className="bg-[#1C1C1E] rounded-[20px] p-5 flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[15px] font-semibold text-[#8E8E93]">Flujo</span>
+            <GlassCard className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-colors">
+              <div className="flex justify-between items-start mb-6">
+                <span className="text-[13px] font-bold text-white/50 uppercase tracking-wider">Flujo</span>
                 <TrendBadge value={flowTrend} />
               </div>
-              <p className={`text-[32px] font-bold tracking-tight ${isPrivate ? 'text-[#38383A]' : monthNetFlow >= 0 ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{mask(monthNetFlow)}</p>
-            </div>
+              <p className={`text-[36px] font-bold tracking-tighter ${isPrivate ? 'text-white/40' : monthNetFlow >= 0 ? 'text-white' : 'text-rose-500'}`}>{mask(monthNetFlow)}</p>
+            </GlassCard>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2">
-              <IOSSection eyebrow="Actividad del Mes">
-                <div className="h-64 w-full p-4 pt-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="day" stroke="#8E8E93" fontSize={11} tickLine={false} axisLine={false} />
-                      <Tooltip content={<CustomTooltip />} cursor={{fill: '#2C2C2E', opacity: 0.5}} />
-                      <Bar dataKey="ingresos" fill={IOS_COLORS.green} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="gastos" fill={IOS_COLORS.red} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </IOSSection>
-            </div>
+            <GlassCard className="lg:col-span-2 p-6">
+              <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Tendencia del Mes</h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="day" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#ffffff10'}} />
+                    <Bar dataKey="ingresos" fill="url(#colorEmerald)" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="gastos" fill="url(#colorRose)" radius={[6, 6, 0, 0]} />
+                    <defs>
+                      <linearGradient id="colorEmerald" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34D399" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#059669" stopOpacity={0.8}/>
+                      </linearGradient>
+                      <linearGradient id="colorRose" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FB7185" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#E11D48" stopOpacity={0.8}/>
+                      </linearGradient>
+                    </defs>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </GlassCard>
             
-            <div className="lg:col-span-1">
-              <IOSSection eyebrow="Distribución">
-                {expenseBreakdown.length > 0 ? (
-                  <div className="p-4 flex flex-col items-center">
-                    <div className="h-40 w-full relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={expenseBreakdown} innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value" stroke="none">
-                            {expenseBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[entry.name] || '#8E8E93'} />)}
-                          </Pie>
-                          <Tooltip content={<CustomTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="w-full mt-4">
-                      {expenseBreakdown.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center py-2 border-b border-[#38383A] last:border-0">
-                          <div className="flex items-center gap-3">
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: EXPENSE_COLORS[item.name] || '#8E8E93' }}></span>
-                            <span className="text-[15px] font-medium">{item.name}</span>
-                          </div>
-                          <span className="text-[15px] text-[#8E8E93]">{mask(item.value)}</span>
+            <GlassCard className="lg:col-span-1 p-6 flex flex-col items-center">
+              <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest w-full text-left mb-2">Distribución</h3>
+              {expenseBreakdown.length > 0 ? (
+                <>
+                  <div className="h-48 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={expenseBreakdown} innerRadius={60} outerRadius={85} paddingAngle={6} dataKey="value" stroke="none">
+                          {expenseBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[entry.name] || '#8E8E93'} style={{filter: `drop-shadow(0px 4px 10px ${EXPENSE_COLORS[entry.name]}60)`}} />)}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-full mt-2 space-y-3">
+                    {expenseBreakdown.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-3">
+                          <span className="w-3.5 h-3.5 rounded-full shadow-lg" style={{ backgroundColor: EXPENSE_COLORS[item.name], boxShadow: `0 0 10px ${EXPENSE_COLORS[item.name]}` }}></span>
+                          <span className="text-[15px] font-medium text-white/90">{item.name}</span>
                         </div>
-                      ))}
-                    </div>
+                        <span className="text-[15px] font-bold">{mask(item.value)}</span>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="h-40 flex items-center justify-center text-[#8E8E93] text-[15px]">Sin gastos</div>
-                )}
-              </IOSSection>
-            </div>
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center text-white/40">Sin gastos</div>
+              )}
+            </GlassCard>
           </div>
         </div>
 
-        {/* --- PESTAÑA: TRANSACCIONES --- */}
-        <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'}`}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* PESTAÑA: TRANSACCIONES */}
+        <div className={`${activeTab === 'transacciones' ? 'block' : 'hidden'} animate-fade-in`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            <div>
-              <IOSSection eyebrow="Añadir Ingreso">
-                <form onSubmit={saveIncome}>
-                  <IOSRow label="Categoría"><select className={inputCls} value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>{INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></IOSRow>
-                  <IOSRow label="Monto"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} /></IOSRow>
-                  {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
-                    <IOSRow label="Costo Insumo"><input type="number" step="any" min="0" placeholder="$ 0.00 (Opcional)" className={inputCls} value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} /></IOSRow>
-                  )}
-                  <IOSRow label="Fecha"><input type="date" required className={inputCls} value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} /></IOSRow>
-                  <IOSRow label="Nota"><input type="text" placeholder="Opcional" className={inputCls} value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} /></IOSRow>
-                  <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Guardar Ingreso</button>
-                </form>
-              </IOSSection>
-
-              {/* Acordeón Restaurado: Historial de Ingresos */}
-              <div className="mb-8">
-                <button 
-                  type="button" 
-                  onClick={() => setShowIncomesHistory(!showIncomesHistory)}
-                  className="w-full flex items-center justify-between bg-[#1C1C1E] rounded-[20px] p-4 active:bg-[#2C2C2E] transition-colors"
-                >
-                  <span className="text-[17px] font-semibold text-white">Historial de Ingresos</span>
-                  <svg className={`w-5 h-5 text-[#8E8E93] transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showIncomesHistory ? 'max-h-[800px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
-                    {filteredIncomes.length === 0 ? (
-                      <div className="p-4 text-center text-[#8E8E93]">No hay ingresos registrados</div>
-                    ) : (
-                      <div className="max-h-64 overflow-y-auto">
-                        {filteredIncomes.map((i) => {
-                          const net = Number(i.amount) - (Number(i.cost) || 0);
-                          return (
-                            <div key={i.id} className="flex justify-between items-center py-3 px-4 border-b border-[#38383A] last:border-0 active:bg-[#2C2C2E] transition-colors">
-                              <div>
-                                <p className="text-[17px] font-medium text-white">{i.category}</p>
-                                <p className="text-[13px] text-[#8E8E93]">{i.note || formatHumanDate(i.date)}</p>
-                              </div>
-                              <div className="text-right flex items-center gap-3">
-                                <div>
-                                  <p className={`text-[17px] font-semibold ${isPrivate ? 'text-[#8E8E93]' : 'text-[#34C759]'}`}>+{mask(net)}</p>
-                                  {Number(i.cost) > 0 && <p className="text-[11px] text-[#8E8E93]">C: {mask(i.cost)}</p>}
-                                </div>
-                                <div className="flex flex-col gap-1 border-l border-[#38383A] pl-3 ml-1">
-                                  <button onClick={() => setIncomeForm(i)} className="text-[#0A84FF]"><Icon.Edit className="w-4 h-4"/></button>
-                                  <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+            <div className="space-y-6">
+              <GlassCard className="p-6">
+                <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Ingreso</h3>
+                <form onSubmit={saveIncome} className="space-y-4">
+                  <GlassSelect value={incomeForm.category} onChange={(e) => setIncomeForm({ ...incomeForm, category: e.target.value })}>{INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
+                  <div className="relative">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
+                    <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <IOSSection eyebrow="Añadir Gasto">
-                <form onSubmit={saveExpense}>
-                  <IOSRow label="Categoría"><select className={inputCls} value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></IOSRow>
-                  <IOSRow label="Monto"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} /></IOSRow>
-                  <IOSRow label="Fecha"><input type="date" required className={inputCls} value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} /></IOSRow>
-                  <IOSRow label="Nota"><input type="text" placeholder="Opcional" className={inputCls} value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} /></IOSRow>
-                  <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Guardar Gasto</button>
+                  {(incomeForm.category === 'Reparaciones' || incomeForm.category === 'Ventas') && (
+                    <GlassInput type="number" step="any" min="0" placeholder="Costo insumo (Opcional)" value={incomeForm.cost} onChange={(e) => setIncomeForm({ ...incomeForm, cost: e.target.value })} />
+                  )}
+                  <GlassInput type="date" required value={incomeForm.date} onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })} />
+                  <GlassInput type="text" placeholder="Nota opcional" value={incomeForm.note} onChange={(e) => setIncomeForm({ ...incomeForm, note: e.target.value })} />
+                  <GlassButton type="submit" variant="primary" className="mt-2">Guardar Ingreso</GlassButton>
                 </form>
-              </IOSSection>
+              </GlassCard>
 
-              {/* Acordeón Restaurado: Historial de Gastos */}
-              <div className="mb-8">
-                <button 
-                  type="button" 
-                  onClick={() => setShowExpensesHistory(!showExpensesHistory)}
-                  className="w-full flex items-center justify-between bg-[#1C1C1E] rounded-[20px] p-4 active:bg-[#2C2C2E] transition-colors"
-                >
-                  <span className="text-[17px] font-semibold text-white">Historial de Gastos</span>
-                  <svg className={`w-5 h-5 text-[#8E8E93] transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              {/* Acordeón Glass */}
+              <GlassCard className="overflow-hidden">
+                <button type="button" onClick={() => setShowIncomesHistory(!showIncomesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
+                  <h3 className="text-[15px] font-bold text-white uppercase tracking-widest">Historial</h3>
+                  <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showExpensesHistory ? 'max-h-[800px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="bg-[#1C1C1E] rounded-[20px] overflow-hidden">
-                    {filteredExpenses.length === 0 ? (
-                      <div className="p-4 text-center text-[#8E8E93]">No hay gastos registrados</div>
-                    ) : (
-                      <div className="max-h-64 overflow-y-auto">
-                        {filteredExpenses.map((e) => (
-                          <div key={e.id} className="flex justify-between items-center py-3 px-4 border-b border-[#38383A] last:border-0 active:bg-[#2C2C2E] transition-colors">
-                            <div>
-                              <p className="text-[17px] font-medium text-white">{e.category}</p>
-                              <p className="text-[13px] text-[#8E8E93]">{e.note || formatHumanDate(e.date)}</p>
-                            </div>
-                            <div className="text-right flex items-center gap-3">
-                              <p className={`text-[17px] font-semibold ${isPrivate ? 'text-[#8E8E93]' : 'text-white'}`}>-{mask(e.amount)}</p>
-                              <div className="flex flex-col gap-1 border-l border-[#38383A] pl-3 ml-1">
-                                <button onClick={() => setExpenseForm(e)} className="text-[#0A84FF]"><Icon.Edit className="w-4 h-4"/></button>
-                                <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
-                              </div>
+                <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showIncomesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="px-4 pb-4">
+                    {filteredIncomes.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredIncomes.map((i) => {
+                      const net = Number(i.amount) - (Number(i.cost) || 0);
+                      return (
+                        <div key={i.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
+                          <div>
+                            <p className="text-[17px] font-bold text-white/90">{i.category}</p>
+                            <p className="text-[13px] text-white/50">{i.note || formatHumanDate(i.date)}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-emerald-400'}`}>+{mask(net)}</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setIncomeForm(i)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
+                              <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-              </div>
+              </GlassCard>
             </div>
 
+            <div className="space-y-6">
+              <GlassCard className="p-6">
+                <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Nuevo Gasto</h3>
+                <form onSubmit={saveExpense} className="space-y-4">
+                  <GlassSelect value={expenseForm.category} onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</GlassSelect>
+                  <div className="relative">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-[18px]">$</span>
+                    <GlassInput type="number" step="any" min="0.01" required placeholder="0.00" className="pl-9 text-[22px] font-semibold" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                  </div>
+                  <GlassInput type="date" required value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} />
+                  <GlassInput type="text" placeholder="Nota opcional" value={expenseForm.note} onChange={(e) => setExpenseForm({ ...expenseForm, note: e.target.value })} />
+                  <GlassButton type="submit" variant="danger" className="mt-2">Guardar Gasto</GlassButton>
+                </form>
+              </GlassCard>
+
+              {/* Acordeón Glass */}
+              <GlassCard className="overflow-hidden">
+                <button type="button" onClick={() => setShowExpensesHistory(!showExpensesHistory)} className="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-colors">
+                  <h3 className="text-[15px] font-bold text-white uppercase tracking-widest">Historial</h3>
+                  <svg className={`w-5 h-5 text-white/50 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                <div className={`transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showExpensesHistory ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="px-4 pb-4">
+                    {filteredExpenses.length === 0 ? <p className="text-center text-white/40 py-4">Vacio</p> : filteredExpenses.map((e) => (
+                      <div key={e.id} className="flex justify-between items-center p-4 bg-white/5 rounded-[20px] mb-3 border border-white/5 hover:bg-white/10 transition-colors">
+                        <div>
+                          <p className="text-[17px] font-bold text-white/90">{e.category}</p>
+                          <p className="text-[13px] text-white/50">{e.note || formatHumanDate(e.date)}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <p className={`text-[17px] font-bold ${isPrivate ? 'text-white/40' : 'text-rose-400'}`}>-{mask(e.amount)}</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => setExpenseForm(e)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/70"><Icon.Edit className="w-4 h-4"/></button>
+                            <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-2 bg-rose-500/10 rounded-full hover:bg-rose-500/20 text-rose-400"><Icon.Trash className="w-4 h-4"/></button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
           </div>
         </div>
 
-        {/* --- PESTAÑA: METAS --- */}
-        <div className={`${activeTab === 'metas' ? 'block' : 'hidden'}`}>
-          <IOSSection eyebrow="Nueva Meta">
-            <form onSubmit={saveGoal}>
-              <IOSRow label="Objetivo"><input type="text" required placeholder="Ej. Enganche" className={inputCls} value={goalForm.name} onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })} /></IOSRow>
-              <IOSRow label="Meta Total"><input type="number" step="any" min="0.01" required placeholder="$ 0.00" className={inputCls} value={goalForm.target} onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })} /></IOSRow>
-              <IOSRow label="Guardado"><input type="number" step="any" min="0" placeholder="$ 0.00" className={inputCls} value={goalForm.saved} onChange={(e) => setGoalForm({ ...goalForm, saved: e.target.value })} /></IOSRow>
-              <IOSRow label="Fecha"><input type="date" required className={inputCls} value={goalForm.deadline} onChange={(e) => setGoalForm({ ...goalForm, deadline: e.target.value })} /></IOSRow>
-              <IOSRow label="Ubicación"><select className={inputCls} value={goalForm.storage} onChange={(e) => setGoalForm({ ...goalForm, storage: e.target.value })}>{STORAGE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></IOSRow>
-              <button type="submit" className="w-full text-center text-[#0A84FF] text-[17px] font-semibold py-4 active:bg-[#2C2C2E] transition-colors">Crear Meta</button>
+        {/* PESTAÑA: METAS */}
+        <div className={`${activeTab === 'metas' ? 'block' : 'hidden'} animate-fade-in`}>
+          <GlassCard className="p-6 mb-8">
+            <h3 className="text-[15px] font-bold text-white/60 uppercase tracking-widest mb-6">Planificación</h3>
+            <form onSubmit={saveGoal} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <GlassInput type="text" required placeholder="Nombre (Ej. Enganche)" value={goalForm.name} onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })} />
+              <GlassInput type="number" step="any" min="0.01" required placeholder="Meta Total ($)" value={goalForm.target} onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })} />
+              <GlassInput type="number" step="any" min="0" placeholder="Ahorro Actual ($)" value={goalForm.saved} onChange={(e) => setGoalForm({ ...goalForm, saved: e.target.value })} />
+              <GlassInput type="date" required value={goalForm.deadline} onChange={(e) => setGoalForm({ ...goalForm, deadline: e.target.value })} />
+              <GlassSelect className="sm:col-span-2" value={goalForm.storage} onChange={(e) => setGoalForm({ ...goalForm, storage: e.target.value })}>{STORAGE_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</GlassSelect>
+              <div className="sm:col-span-2 mt-2">
+                <GlassButton type="submit" variant="glass">Inicializar Meta</GlassButton>
+              </div>
             </form>
-          </IOSSection>
+          </GlassCard>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {goals.map((g) => {
               const target = Number(g.target); const saved = Number(g.saved);
               const pct = Math.min(100, (saved / target) * 100);
               return (
-                <div key={g.id} className="bg-[#1C1C1E] rounded-[20px] p-5">
-                  <div className="flex justify-between items-start mb-4">
+                <GlassCard key={g.id} className="p-6 flex flex-col justify-between hover:bg-white/[0.06] transition-all group">
+                  <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h3 className="text-[17px] font-semibold text-white">{g.name}</h3>
-                      <p className="text-[13px] text-[#8E8E93]">{g.storage}</p>
+                      <h3 className="text-[20px] font-bold text-white tracking-tight">{g.name}</h3>
+                      <p className="text-[13px] text-white/50 font-medium bg-white/5 px-3 py-1 rounded-full w-max mt-2 border border-white/5">{g.storage}</p>
                     </div>
-                    <button onClick={() => handleDeleteClick('goals', g.id, setGoals)} className="text-[#FF3B30]"><Icon.Trash className="w-4 h-4"/></button>
+                    <button onClick={() => handleDeleteClick('goals', g.id, setGoals)} className="text-white/20 hover:text-rose-400 transition-colors p-2"><Icon.Trash className="w-5 h-5"/></button>
                   </div>
                   
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[15px] font-semibold text-white">{mask(saved)} <span className="text-[#8E8E93] text-[13px] font-normal">de {mask(target)}</span></span>
-                    <span className="text-[15px] font-bold text-[#34C759]">{pct.toFixed(0)}%</span>
+                  <div>
+                    <div className="flex justify-between items-end mb-3">
+                      <span className="text-[17px] font-bold text-white">{mask(saved)} <span className="text-white/40 text-[14px] font-normal">/ {mask(target)}</span></span>
+                      <span className="text-[17px] font-bold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]">{pct.toFixed(0)}%</span>
+                    </div>
+                    
+                    <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden mb-6 shadow-inner border border-white/5">
+                      <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${pct}%` }}></div>
+                    </div>
+                    
+                    <GlassButton variant="glass" onClick={() => handleAddFundsClick(g)} className="!py-3 text-[15px] !rounded-[16px] text-emerald-400">
+                      Abonar Fondos
+                    </GlassButton>
                   </div>
-                  
-                  <div className="h-2 w-full bg-[#2C2C2E] rounded-full overflow-hidden mb-4">
-                    <div className="h-full bg-[#34C759] transition-all" style={{ width: `${pct}%` }}></div>
-                  </div>
-                  
-                  <button onClick={() => handleAddFundsClick(g)} className="w-full bg-[#2C2C2E] hover:bg-[#38383A] active:bg-[#48484A] text-[#0A84FF] text-[15px] font-semibold py-2.5 rounded-[12px] transition-colors">
-                    Abonar
-                  </button>
-                </div>
+                </GlassCard>
               );
             })}
           </div>
         </div>
       </main>
 
-      {/* --- NAVEGACIÓN MÓVIL (UITabBar Native Style) --- */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#121212]/80 backdrop-blur-2xl border-t border-white/10 z-40">
-        <ul className="flex justify-around items-center h-[83px] pb-safe pt-2 px-2">
-          <li className="flex-1">
-            <button onClick={() => setActiveTab('resumen')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'resumen' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
-              <Icon.Home className="h-6 w-6" />
-              <span className="text-[10px] font-medium">Resumen</span>
+      {/* --- NAVEGACIÓN FLOTANTE (DYNAMIC DOCK - iOS Concept) --- */}
+      <nav className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex justify-center">
+        <div className="bg-white/[0.08] backdrop-blur-[50px] border border-white/[0.12] rounded-[32px] p-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-around items-center w-full max-w-[400px]">
+          <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'resumen' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
+            <Icon.Home className={`w-6 h-6 mb-1 ${activeTab==='resumen'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
+            <span className="text-[10px] font-semibold">Resumen</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'transacciones' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
+            <Icon.Wallet className={`w-6 h-6 mb-1 ${activeTab==='transacciones'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
+            <span className="text-[10px] font-semibold">Tracker</span>
+          </button>
+
+          {/* Fab Button Integrado en el Dock */}
+          <div className="relative -top-6 mx-1">
+            <button onClick={() => setIsQuickAddOpen(true)} className="flex items-center justify-center w-[64px] h-[64px] rounded-full bg-gradient-to-tr from-emerald-400 to-teal-300 text-black shadow-[0_10px_30px_rgba(52,211,153,0.4)] border-4 border-black transition-transform active:scale-90">
+              <Icon.Plus className="w-8 h-8" />
             </button>
-          </li>
-          <li className="flex-1">
-            <button onClick={() => setActiveTab('transacciones')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'transacciones' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
-              <Icon.Wallet className="h-6 w-6" />
-              <span className="text-[10px] font-medium">Historial</span>
-            </button>
-          </li>
-          <li className="flex-1">
-            <button onClick={() => setIsQuickAddOpen(true)} className="w-full flex flex-col items-center gap-1 text-[#8E8E93] active:text-white transition-colors">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span className="text-[10px] font-medium">Rápido</span>
-            </button>
-          </li>
-          <li className="flex-1">
-            <button onClick={() => setActiveTab('metas')} className={`w-full flex flex-col items-center gap-1 ${activeTab === 'metas' ? 'text-[#0A84FF]' : 'text-[#8E8E93]'}`}>
-              <Icon.Target className="h-6 w-6" />
-              <span className="text-[10px] font-medium">Metas</span>
-            </button>
-          </li>
-        </ul>
+          </div>
+
+          <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'metas' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
+            <Icon.Target className={`w-6 h-6 mb-1 ${activeTab==='metas'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
+            <span className="text-[10px] font-semibold">Metas</span>
+          </button>
+        </div>
       </nav>
 
-      {/* --- BOTTOM SHEET MODAL (Gasto Rápido iOS) --- */}
-      <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsQuickAddOpen(false)}></div>
+      {/* --- MODAL GASTO RÁPIDO (LIQUID BOTTOM SHEET) --- */}
+      <div className={`fixed inset-0 z-50 transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
         
-        <div className={`absolute bottom-0 left-0 right-0 bg-[#1C1C1E] rounded-t-[32px] p-6 pb-12 transition-transform duration-300 transform ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="w-12 h-1.5 bg-[#48484A] rounded-full mx-auto mb-6"></div>
-          <h3 className="text-[20px] font-bold text-white tracking-tight mb-6 text-center">Gasto Rápido</h3>
+        <div className={`absolute bottom-0 left-0 right-0 bg-white/[0.08] backdrop-blur-[60px] border-t border-white/[0.15] shadow-[0_-20px_40px_rgba(0,0,0,0.5)] rounded-t-[40px] p-6 pb-safe transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${isQuickAddOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="w-14 h-1.5 bg-white/20 rounded-full mx-auto mb-8 shadow-inner"></div>
+          <h3 className="text-[24px] font-bold text-white tracking-tight mb-8 text-center drop-shadow-md">Gasto Rápido</h3>
           
-          <form onSubmit={handleQuickExpense} className="flex flex-col gap-4">
-            <div className="bg-[#2C2C2E] rounded-[16px] overflow-hidden">
-              <div className="flex items-center px-4 py-3 border-b border-[#38383A]">
-                <span className="text-[#8E8E93] text-[17px] mr-2">$</span>
-                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-transparent text-[22px] font-semibold text-white outline-none" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
-              </div>
-              <div className="px-4 py-3 border-b border-[#38383A]">
-                <select className="w-full bg-transparent text-[17px] text-white outline-none" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
-                  {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="px-4 py-3">
-                <input type="text" placeholder="Nota opcional" className="w-full bg-transparent text-[17px] text-white outline-none placeholder:text-[#8E8E93]" value={qNote} onChange={(e) => setQNote(e.target.value)} />
-              </div>
+          <form onSubmit={handleQuickExpense} className="flex flex-col gap-5 max-w-sm mx-auto">
+            <div className="relative">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 text-[24px] font-light">$</span>
+              <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-2xl border border-white/10 rounded-[24px] px-6 py-6 pl-12 text-[36px] font-bold text-white outline-none focus:border-rose-500/50 shadow-inner" value={qAmount} onChange={(e) => setQAmount(e.target.value)} />
             </div>
+
+            <GlassSelect className="!py-5 !rounded-[24px] !text-[18px]" value={qCategory} onChange={(e) => setQCategory(e.target.value)}>
+              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </GlassSelect>
+
+            <GlassInput className="!py-5 !rounded-[24px] !text-[18px]" type="text" placeholder="Nota opcional" value={qNote} onChange={(e) => setQNote(e.target.value)} />
             
-            <button type="submit" className="mt-2 w-full bg-[#0A84FF] text-white text-[17px] font-semibold py-4 rounded-[14px] active:bg-[#0A84FF]/80 transition-colors">
-              Guardar
-            </button>
+            <GlassButton type="submit" variant="danger" className="!py-5 !rounded-[24px] !text-[18px] mt-4 shadow-[0_0_30px_rgba(244,63,94,0.4)]">
+              Confirmar Gasto
+            </GlassButton>
           </form>
         </div>
       </div>
 
-      {/* MODALES CLÁSICOS */}
+      {/* MODALES CLÁSICOS (GLASS) */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md px-4">
-          <div className="bg-[#1C1C1E] rounded-[20px] w-full max-w-[270px] text-center overflow-hidden">
-            <div className="p-6">
-              <h3 className="text-[17px] font-semibold text-white mb-1">Eliminar Registro</h3>
-              <p className="text-[13px] text-[#8E8E93]">Esta acción no se puede deshacer.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
+          <GlassCard className="relative z-10 w-full max-w-[320px] p-6 text-center border-t-white/20 border-l-white/20">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 mx-auto flex items-center justify-center mb-4 border border-rose-500/30">
+              <Icon.Warning className="w-8 h-8 text-rose-400" />
             </div>
-            <div className="border-t border-[#38383A] flex flex-col">
-              <button onClick={confirmDelete} className="py-3 text-[17px] text-[#FF3B30] font-normal border-b border-[#38383A] active:bg-[#2C2C2E]">Eliminar</button>
-              <button onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })} className="py-3 text-[17px] text-[#0A84FF] font-semibold active:bg-[#2C2C2E]">Cancelar</button>
+            <h3 className="text-[20px] font-bold text-white mb-2">¿Eliminar Registro?</h3>
+            <p className="text-[15px] text-white/50 mb-8">Esta acción es permanente y se borrará de la base de datos.</p>
+            <div className="flex gap-3">
+              <GlassButton variant="glass" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}>Cancelar</GlassButton>
+              <GlassButton variant="danger" onClick={confirmDelete}>Eliminar</GlassButton>
             </div>
-          </div>
+          </GlassCard>
         </div>
       )}
 
       {fundModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md px-4">
-          <div className="bg-[#1C1C1E] rounded-[20px] p-6 w-full max-w-sm">
-            <h3 className="text-[20px] font-bold text-white mb-4 text-center">Abonar a Meta</h3>
-            <form onSubmit={confirmAddFunds}>
-              <div className="bg-[#2C2C2E] rounded-[14px] flex items-center px-4 py-3 mb-6">
-                <span className="text-[#8E8E93] text-[17px] mr-2">$</span>
-                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-transparent text-[22px] font-semibold text-white outline-none" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}></div>
+          <GlassCard className="relative z-10 w-full max-w-[340px] p-8 border-t-white/20 border-l-white/20">
+            <h3 className="text-[22px] font-bold text-white mb-2 text-center drop-shadow-md">Abonar Fondos</h3>
+            <p className="text-[15px] text-white/50 mb-6 text-center">Para: <span className="text-white font-semibold">{fundModal.goal?.name}</span></p>
+            <form onSubmit={confirmAddFunds} className="space-y-6">
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 text-[20px] font-light">$</span>
+                <input type="number" step="any" min="0.01" required autoFocus placeholder="0.00" className="w-full bg-black/30 backdrop-blur-xl border border-white/10 rounded-[20px] px-5 py-5 pl-10 text-[28px] font-bold text-emerald-400 outline-none focus:border-emerald-500/50 shadow-inner" value={fundModal.amount} onChange={(e) => setFundModal({ ...fundModal, amount: e.target.value })} />
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })} className="flex-1 py-3 text-[17px] text-[#0A84FF] font-semibold bg-[#2C2C2E] rounded-[14px] active:bg-[#38383A]">Cancelar</button>
-                <button type="submit" className="flex-1 py-3 text-[17px] text-white font-semibold bg-[#0A84FF] rounded-[14px] active:bg-[#0A84FF]/80">Abonar</button>
+                <GlassButton variant="glass" onClick={() => setFundModal({ isOpen: false, goal: null, amount: '' })}>Cancelar</GlassButton>
+                <GlassButton type="submit" variant="primary">Abonar</GlassButton>
               </div>
             </form>
-          </div>
+          </GlassCard>
         </div>
       )}
     </div>
