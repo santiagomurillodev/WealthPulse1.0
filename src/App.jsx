@@ -4,17 +4,20 @@ import { Icon } from './components/Icons';
 import { useFinanceData } from './hooks/useFinanceData';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 
+// Importamos las librerías para generar el PDF
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 const INCOME_CATEGORIES = ['Salario Base', 'Reparaciones', 'Ventas', 'Extra'];
 const EXPENSE_CATEGORIES = ['Comida', 'Servicios', 'Insumos Taller/Refacciones', 'Transporte', 'Gustos'];
 const STORAGE_OPTIONS = ['Tarjeta', 'Efectivo', 'Cuenta de Ahorro', 'Inversión'];
 
-// Paleta de colores para la gráfica de dona (gastos)
 const EXPENSE_COLORS = {
-  'Comida': '#f59e0b', // amber-500
-  'Servicios': '#3b82f6', // blue-500
-  'Insumos Taller/Refacciones': '#06b6d4', // cyan-500
-  'Transporte': '#8b5cf6', // violet-500
-  'Gustos': '#ec4899' // pink-500
+  'Comida': '#f59e0b',
+  'Servicios': '#3b82f6',
+  'Insumos Taller/Refacciones': '#06b6d4',
+  'Transporte': '#8b5cf6',
+  'Gustos': '#ec4899'
 };
 
 const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
@@ -60,7 +63,6 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
 
-  // Estados para los menús desplegables del historial
   const [showIncomesHistory, setShowIncomesHistory] = useState(false);
   const [showExpensesHistory, setShowExpensesHistory] = useState(false);
 
@@ -78,7 +80,6 @@ export default function App() {
   const monthExpenseTotal = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const monthNetFlow = monthIncomeTotal - monthExpenseTotal;
 
-  // --- CÁLCULOS HISTÓRICOS GLOBALES ---
   const historicalIncomeTotal = useMemo(() => incomes.reduce((s, i) => s + (Number(i.amount) - (Number(i.cost) || 0)), 0), [incomes]);
   const historicalExpenseTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
   
@@ -86,7 +87,6 @@ export default function App() {
   const totalSavedInGoals = useMemo(() => goals.reduce((s, g) => s + (Number(g.saved) || 0), 0), [goals]);
   const availableCash = capitalTotal - totalSavedInGoals;
 
-  // --- Gráfica de Barras (Tendencia) ---
   const chartData = useMemo(() => {
     const [year, month] = selectedMonth.split('-');
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -103,7 +103,6 @@ export default function App() {
     return data;
   }, [filteredIncomes, filteredExpenses, selectedMonth]);
 
-  // --- NUEVO: Gráfica de Dona (Distribución de Gastos) ---
   const expenseBreakdown = useMemo(() => {
     const breakdown = {};
     filteredExpenses.forEach(exp => {
@@ -112,8 +111,102 @@ export default function App() {
     });
     return Object.keys(breakdown)
       .map(key => ({ name: key, value: breakdown[key] }))
-      .sort((a, b) => b.value - a.value); // Ordenar de mayor a menor gasto
+      .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
+
+  // --- NUEVA FUNCIÓN: GENERAR Y EXPORTAR PDF ---
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Encabezado principal
+    doc.setFontSize(22);
+    doc.setTextColor(20, 20, 20);
+    doc.text('WealthPulse', 14, 22);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Estado de Cuenta - ${selectedMonth}`, 14, 30);
+
+    // Módulo 1: Patrimonio Histórico
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('1. PATRIMONIO HISTÓRICO GLOBAL', 14, 45);
+    
+    doc.autoTable({
+      startY: 50,
+      head: [['Capital Total Acumulado', 'Ahorrado en Metas', 'Capital Libre Disponible']],
+      body: [[fmt.format(capitalTotal), fmt.format(totalSavedInGoals), fmt.format(availableCash)]],
+      theme: 'grid',
+      headStyles: { fillColor: [52, 211, 153], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 10, halign: 'center' }
+    });
+
+    // Módulo 2: Resumen del Mes
+    let finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`2. FLUJO DEL MES (${selectedMonth})`, 14, finalY);
+
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [['Ingresos Netos', 'Gastos Totales', 'Flujo Neto Mensual']],
+      body: [[fmt.format(monthIncomeTotal), fmt.format(monthExpenseTotal), fmt.format(monthNetFlow)]],
+      theme: 'grid',
+      headStyles: { fillColor: [38, 38, 38], textColor: [255, 255, 255] },
+      styles: { fontSize: 10, halign: 'center' }
+    });
+
+    // Módulo 3: Detalle de Ingresos
+    finalY = doc.lastAutoTable.finalY + 15;
+    doc.text('3. DESGLOSE DE INGRESOS', 14, finalY);
+    
+    const ingresosRows = filteredIncomes.map(i => [
+      i.date,
+      i.category,
+      i.note || '-',
+      fmt.format(i.amount),
+      Number(i.cost) > 0 ? fmt.format(i.cost) : '-',
+      fmt.format(Number(i.amount) - (Number(i.cost) || 0))
+    ]);
+
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Cobro Bruto', 'Costo Insumo', 'Ingreso Neto']],
+      body: ingresosRows.length > 0 ? ingresosRows : [['-', '-', 'Sin movimientos este mes', '-', '-', '-']],
+      theme: 'striped',
+      headStyles: { fillColor: [52, 211, 153] },
+      styles: { fontSize: 9 }
+    });
+
+    // Módulo 4: Detalle de Gastos
+    finalY = doc.lastAutoTable.finalY + 15;
+    // Si la tabla anterior ocupó mucho espacio y estamos cerca del final, añadimos página
+    if (finalY > 250) {
+      doc.addPage();
+      finalY = 20;
+    }
+
+    doc.text('4. DESGLOSE DE GASTOS', 14, finalY);
+    
+    const gastosRows = filteredExpenses.map(e => [
+      e.date,
+      e.category,
+      e.note || '-',
+      fmt.format(e.amount)
+    ]);
+
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [['Fecha', 'Categoría', 'Concepto / Nota', 'Monto del Gasto']],
+      body: gastosRows.length > 0 ? gastosRows : [['-', '-', 'Sin movimientos este mes', '-']],
+      theme: 'striped',
+      headStyles: { fillColor: [244, 63, 94] }, // Color rose-500
+      styles: { fontSize: 9 }
+    });
+
+    // Guardar el documento
+    doc.save(`WealthPulse_Reporte_${selectedMonth}.pdf`);
+  };
 
   // --- VALIDACIONES Y CRUD ---
   const saveIncome = useCallback(async (e) => {
@@ -266,8 +359,20 @@ export default function App() {
               </p>
             </div>
           </div>
-          <div className="flex items-center bg-neutral-900/60 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
-            <input type="month" className="bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleExportPDF}
+              className="flex items-center gap-1.5 bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 px-3 py-2 rounded-xl text-xs font-bold tracking-wide transition-all shadow-md"
+              title="Descargar Estado de Cuenta en PDF"
+            >
+              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Exportar
+            </button>
+            <div className="flex items-center bg-neutral-900/60 border border-neutral-800 rounded-xl p-1.5 shadow-inner">
+              <input type="month" className="bg-transparent text-sm font-semibold text-neutral-100 outline-none px-2 cursor-pointer" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
+            </div>
           </div>
         </header>
 
@@ -298,7 +403,6 @@ export default function App() {
         {/* --- SECCIÓN 1: RESUMEN Y GRÁFICAS --- */}
         <div className={`${activeTab === 'resumen' ? 'block' : 'hidden'} lg:block`}>
           
-          {/* Tarjetas de flujo */}
           <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="rounded-3xl border border-neutral-800/60 bg-gradient-to-br from-neutral-900/50 to-neutral-950 p-6 shadow-xl">
               <p className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Ingresos Neto</p>
@@ -314,7 +418,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Gráficas */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2">
               <Section eyebrow="Analíticas" title="Tendencia del Mes">
@@ -361,7 +464,6 @@ export default function App() {
                           <Tooltip content={<CustomPieTooltip />} />
                         </PieChart>
                       </ResponsiveContainer>
-                      {/* Porcentaje en el centro */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-2xl font-bold text-white">100%</span>
                         <span className="text-[9px] text-neutral-500 uppercase tracking-widest mt-0.5">Gastos</span>
@@ -436,7 +538,6 @@ export default function App() {
                 </button>
               </form>
               
-              {/* ACORDEÓN DE HISTORIAL DE INGRESOS */}
               <div className="border-t border-neutral-800/40 pt-4">
                 <button 
                   type="button" 
@@ -509,7 +610,6 @@ export default function App() {
                 </button>
               </form>
 
-              {/* ACORDEÓN DE HISTORIAL DE GASTOS */}
               <div className="border-t border-neutral-800/40 pt-4">
                 <button 
                   type="button" 
