@@ -37,7 +37,18 @@ const formatHumanDate = (dateStr) => {
   return new Intl.DateTimeFormat('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
 };
 
-/* --- COMPONENTES LIQUID GLASS (iOS 26 / VisionOS Style) --- */
+/* --- ESTILOS GLOBALES PARA OCULTAR BARRAS DE SCROLL FEAS EN PC --- */
+const GlobalStyles = () => (
+  <style>{`
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+  `}</style>
+);
+
+/* --- COMPONENTES LIQUID GLASS --- */
 const GlassCard = ({ children, className = '' }) => (
   <div className={`bg-white/[0.04] backdrop-blur-[40px] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-[32px] ${className}`}>
     {children}
@@ -132,10 +143,10 @@ export default function App() {
     } else if (pinSetupStep === 'confirm') {
       if (currentPin === tempPin) {
         localStorage.setItem('wp_pin', currentPin); setSavedPin(currentPin); setIsAuthenticated(true);
-      } else triggerPinError('No coinciden', 'create');
+      } else triggerPinError();
     } else if (pinSetupStep === 'enter') {
       if (currentPin === savedPin) setIsAuthenticated(true);
-      else triggerPinError('Incorrecto', 'enter');
+      else triggerPinError();
     }
   };
 
@@ -287,48 +298,51 @@ export default function App() {
     return null;
   };
 
-  // --- RENDER 1: PANTALLA PIN (GLASSMORPHISM) ---
+  // --- RENDER 1: PANTALLA PIN (PANTALLA COMPLETA SIN CAPSULA) ---
   if (!isAuthenticated) {
-    let instruction = pinSetupStep === 'create' ? 'Crea un PIN' : pinSetupStep === 'confirm' ? 'Confirma el PIN' : 'Desbloquear WealthPulse';
+    let instruction = pinSetupStep === 'create' ? 'Crea un PIN de acceso' : pinSetupStep === 'confirm' ? 'Confirma tu PIN' : 'Desbloquear WealthPulse';
     return (
-      <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+      <main className="relative min-h-screen bg-black flex flex-col items-center justify-center p-6 overflow-hidden font-sans">
+        <GlobalStyles />
         {/* Ambient Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none"></div>
         
-        <GlassCard className="relative z-10 w-full max-w-[340px] p-8 flex flex-col items-center border-t-white/20 border-l-white/20">
+        {/* Contenido libre sin GlassCard (diseño inmersivo) */}
+        <div className="relative z-10 w-full max-w-[320px] flex flex-col items-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(52,211,153,0.4)]">
             <Icon.Pulse className="h-8 w-8 text-black" />
           </div>
           <h2 className="text-[22px] text-white font-bold tracking-tight mb-8 text-center">{instruction}</h2>
           
-          <div className={`flex gap-5 justify-center mb-10 transition-transform duration-200 ${pinError ? 'translate-x-3' : ''}`}>
+          <div className={`flex gap-5 justify-center mb-12 transition-transform duration-200 ${pinError ? 'translate-x-3' : ''}`}>
             {[...Array(4)].map((_, i) => (
               <div key={i} className={`w-4 h-4 rounded-full transition-all duration-300 ${pinError ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]' : enteredPin.length > i ? 'bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.6)] scale-110' : 'bg-white/10 border border-white/20'}`} />
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-x-4 gap-y-4 w-full">
+          <div className="grid grid-cols-3 gap-x-6 gap-y-5 w-full">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-[72px] h-[72px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">
+              <button key={num} onClick={() => handlePinPress(num.toString())} className="w-[76px] h-[76px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">
                 {num}
               </button>
             ))}
             <div />
-            <button onClick={() => handlePinPress('0')} className="w-[72px] h-[72px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">0</button>
-            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-[72px] h-[72px] mx-auto rounded-full flex items-center justify-center text-white/50 hover:text-white active:scale-95 transition-all">
+            <button onClick={() => handlePinPress('0')} className="w-[76px] h-[76px] mx-auto rounded-full bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 text-[32px] font-light text-white transition-all backdrop-blur-md flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">0</button>
+            <button onClick={() => setEnteredPin(prev => prev.slice(0, -1))} className="w-[76px] h-[76px] mx-auto rounded-full flex items-center justify-center text-white/50 hover:text-white active:scale-95 transition-all">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
             </button>
           </div>
-        </GlassCard>
-      </div>
+        </div>
+      </main>
     );
   }
 
-  // --- RENDER 2: SKELETONS (LIQUID GLASS NATIVE) ---
+  // --- RENDER 2: SKELETONS ---
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+      <main className="relative min-h-screen bg-black overflow-hidden p-6 font-sans">
+        <GlobalStyles />
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
         <div className="absolute bottom-[10%] right-[-20%] w-[80vw] h-[80vw] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none"></div>
         
@@ -347,13 +361,15 @@ export default function App() {
             <div className="h-32 bg-white/5 backdrop-blur-md rounded-[32px] animate-pulse"></div>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   // --- RENDER 3: APP PRINCIPAL ---
   return (
-    <div className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-x-hidden pb-[120px]">
+      <GlobalStyles />
+      
       {/* ORBES AMBIENTALES DE FONDO */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-emerald-600/10 rounded-full blur-[140px] mix-blend-screen"></div>
@@ -361,30 +377,46 @@ export default function App() {
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen"></div>
       </div>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10">
         
-        {/* CABECERA */}
-        <header className="flex flex-col sm:flex-row justify-between items-end mb-8 gap-4">
-          <div>
-            <h1 className="text-[40px] font-extrabold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/50 mb-1">
-              WealthPulse
-            </h1>
-            <p className="text-[13px] text-emerald-400 font-mono tracking-widest uppercase flex items-center gap-2">
-              <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-              Real-Time Sync
-            </p>
+        {/* CABECERA ALINEADA */}
+        <header className="flex flex-col gap-6 mb-10">
+          {/* Fila 1: Logo y Tabs de Escritorio */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-[36px] sm:text-[44px] font-extrabold tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-white/50 mb-1">
+                WealthPulse
+              </h1>
+              <p className="text-[13px] text-emerald-400 font-mono tracking-widest uppercase flex items-center gap-2">
+                <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                Real-Time Sync
+              </p>
+            </div>
+            
+            {/* TABS DE ESCRITORIO (SOLUCIÓN PUNTO 2) */}
+            <div className="hidden sm:flex bg-white/5 backdrop-blur-xl border border-white/10 rounded-full p-1.5 shadow-inner">
+              <button onClick={() => setActiveTab('resumen')} className={`px-6 py-2 rounded-full text-[14px] font-bold transition-all ${activeTab === 'resumen' ? 'bg-white/10 text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}>Resumen</button>
+              <button onClick={() => setActiveTab('transacciones')} className={`px-6 py-2 rounded-full text-[14px] font-bold transition-all ${activeTab === 'transacciones' ? 'bg-white/10 text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}>Tracker</button>
+              <button onClick={() => setActiveTab('metas')} className={`px-6 py-2 rounded-full text-[14px] font-bold transition-all ${activeTab === 'metas' ? 'bg-white/10 text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}>Metas</button>
+            </div>
           </div>
-          
-          <div className="flex gap-2 w-full sm:w-auto">
-            <GlassSelect className="py-2.5 px-4 text-[15px] !w-auto" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+
+          {/* Fila 2: Controles (Solución Punto 3 - Todo cuadrado y bien alineado) */}
+          <div className="flex flex-row items-center gap-3 w-full sm:justify-end">
+            <GlassSelect className="!w-auto !py-3 !px-4 !text-[15px] !rounded-[16px] flex-1 sm:flex-none" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
               <option value={selectedMonth}>{selectedMonth}</option>
             </GlassSelect>
-            <GlassButton variant="glass" className="!w-auto !p-3" onClick={() => setIsPrivate(!isPrivate)}>
+            <GlassButton variant="glass" className="!w-auto !p-3 !rounded-[16px]" onClick={() => setIsPrivate(!isPrivate)}>
               {isPrivate ? <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> 
               : <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
             </GlassButton>
-            <GlassButton variant="glass" className="!w-auto !p-3" onClick={handleExportPDF}>
+            <GlassButton variant="glass" className="!w-auto !p-3 !rounded-[16px]" onClick={handleExportPDF}>
               <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            </GlassButton>
+            
+            {/* Botón Gasto Rápido en PC */}
+            <GlassButton variant="primary" className="hidden sm:flex !w-auto !py-3 !px-5 !rounded-[16px] ml-4" onClick={() => setIsQuickAddOpen(true)}>
+              <Icon.Plus className="w-5 h-5"/> Gasto Rápido
             </GlassButton>
           </div>
         </header>
@@ -637,34 +669,39 @@ export default function App() {
         </div>
       </main>
 
-      {/* --- NAVEGACIÓN FLOTANTE (DYNAMIC DOCK - iOS Concept) --- */}
-      <nav className="lg:hidden fixed bottom-6 left-4 right-4 z-40 flex justify-center">
-        <div className="bg-white/[0.08] backdrop-blur-[50px] border border-white/[0.12] rounded-[32px] p-2 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-around items-center w-full max-w-[400px]">
-          <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'resumen' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
-            <Icon.Home className={`w-6 h-6 mb-1 ${activeTab==='resumen'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
-            <span className="text-[10px] font-semibold">Resumen</span>
-          </button>
-          
-          <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'transacciones' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
-            <Icon.Wallet className={`w-6 h-6 mb-1 ${activeTab==='transacciones'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
-            <span className="text-[10px] font-semibold">Tracker</span>
-          </button>
-
-          {/* Fab Button Integrado en el Dock */}
-          <div className="relative -top-6 mx-1">
-            <button onClick={() => setIsQuickAddOpen(true)} className="flex items-center justify-center w-[64px] h-[64px] rounded-full bg-gradient-to-tr from-emerald-400 to-teal-300 text-black shadow-[0_10px_30px_rgba(52,211,153,0.4)] border-4 border-black transition-transform active:scale-90">
-              <Icon.Plus className="w-8 h-8" />
+      {/* --- NAVEGACIÓN INFERIOR (BORDE A BORDE - SOLUCIÓN PUNTO 4) --- */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/[0.02] backdrop-blur-[60px] border-t border-white/[0.08]">
+        <ul className="flex justify-around items-center h-[84px] pb-safe pt-2 px-4">
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('resumen')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'resumen' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Home className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Resumen</span>
             </button>
-          </div>
-
-          <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center justify-center w-[70px] h-[60px] rounded-[24px] transition-all duration-300 ${activeTab === 'metas' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/80'}`}>
-            <Icon.Target className={`w-6 h-6 mb-1 ${activeTab==='metas'?'drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]':''}`} />
-            <span className="text-[10px] font-semibold">Metas</span>
-          </button>
-        </div>
+          </li>
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('transacciones')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'transacciones' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Wallet className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Tracker</span>
+            </button>
+          </li>
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setIsQuickAddOpen(true)} className="flex flex-col items-center gap-1 transition-all text-emerald-400 active:scale-95">
+              <div className="bg-emerald-500/20 rounded-full p-1.5 border border-emerald-500/30 shadow-[0_0_15px_rgba(52,211,153,0.2)]">
+                <Icon.Plus className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-semibold">Rápido</span>
+            </button>
+          </li>
+          <li className="flex-1 flex justify-center">
+            <button onClick={() => setActiveTab('metas')} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'metas' ? 'text-white' : 'text-white/40 hover:text-white/80'}`}>
+              <Icon.Target className="w-6 h-6" />
+              <span className="text-[10px] font-semibold">Metas</span>
+            </button>
+          </li>
+        </ul>
       </nav>
 
-      {/* --- MODAL GASTO RÁPIDO (LIQUID BOTTOM SHEET) --- */}
+      {/* --- MODAL GASTO RÁPIDO --- */}
       <div className={`fixed inset-0 z-50 transition-all duration-500 ${isQuickAddOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsQuickAddOpen(false)}></div>
         
@@ -691,7 +728,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* MODALES CLÁSICOS (GLASS) */}
+      {/* MODALES CLÁSICOS */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeleteModal({ isOpen: false, table: null, id: null, setFn: null })}></div>
@@ -728,6 +765,6 @@ export default function App() {
           </GlassCard>
         </div>
       )}
-    </div>
+    </main>
   );
 }
