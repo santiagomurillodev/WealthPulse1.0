@@ -60,6 +60,10 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr());
   const [activeTab, setActiveTab] = useState('resumen');
 
+  // Estados para los menús desplegables del historial
+  const [showIncomesHistory, setShowIncomesHistory] = useState(false);
+  const [showExpensesHistory, setShowExpensesHistory] = useState(false);
+
   const [incomeForm, setIncomeForm] = useState({ id: null, amount: '', cost: '', category: INCOME_CATEGORIES[0], note: '', date: todayISO() });
   const [expenseForm, setExpenseForm] = useState({ id: null, amount: '', category: EXPENSE_CATEGORIES[0], note: '', date: todayISO() });
   const [goalForm, setGoalForm] = useState({ id: null, name: '', target: '', saved: '', deadline: '', storage: STORAGE_OPTIONS[0] });
@@ -432,33 +436,51 @@ export default function App() {
                 </button>
               </form>
               
-              <div className="border-t border-neutral-800/40 pt-6">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-4">Historial Reciente</h3>
-                <ul className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                  {filteredIncomes.map((i) => {
-                    const net = Number(i.amount) - (Number(i.cost) || 0);
-                    return (
-                      <li key={i.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
-                        <div className="text-sm">
-                          <p className="text-neutral-100 font-medium">
-                            {i.category} {i.note && <span className="text-neutral-500 font-normal ml-1">· {i.note}</span>}
-                          </p>
-                          <div className="flex gap-2 items-center mt-1">
-                            <span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(i.date)}</span>
-                            {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: ${i.amount} | Insumo: -${i.cost}</span>}
+              {/* ACORDEÓN DE HISTORIAL DE INGRESOS */}
+              <div className="border-t border-neutral-800/40 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setShowIncomesHistory(!showIncomesHistory)}
+                  className="w-full flex items-center justify-between py-2 group focus:outline-none"
+                >
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-emerald-400 transition-colors">
+                    Historial Reciente
+                  </h3>
+                  <svg 
+                    className={`w-4 h-4 text-neutral-500 group-hover:text-emerald-400 transition-transform duration-300 ${showIncomesHistory ? 'rotate-180' : ''}`} 
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showIncomesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+                  <ul className="space-y-3 overflow-y-auto pr-2 max-h-64">
+                    {filteredIncomes.map((i) => {
+                      const net = Number(i.amount) - (Number(i.cost) || 0);
+                      return (
+                        <li key={i.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
+                          <div className="text-sm">
+                            <p className="text-neutral-100 font-medium">
+                              {i.category} {i.note && <span className="text-neutral-500 font-normal ml-1">· {i.note}</span>}
+                            </p>
+                            <div className="flex gap-2 items-center mt-1">
+                              <span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(i.date)}</span>
+                              {Number(i.cost) > 0 && <span className="text-[11px] text-neutral-500 font-mono">Cobro: ${i.amount} | Insumo: -${i.cost}</span>}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono text-[15px] font-semibold text-emerald-400">+{fmt.format(net)}</span>
-                          <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
-                            <button onClick={() => setIncomeForm(i)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
-                            <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
+                          <div className="flex items-center gap-4">
+                            <span className="font-mono text-[15px] font-semibold text-emerald-400">+{fmt.format(net)}</span>
+                            <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
+                              <button onClick={() => setIncomeForm(i)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
+                              <button onClick={() => handleDeleteClick('incomes', i.id, setIncomes)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </div>
             </Section>
 
@@ -487,27 +509,45 @@ export default function App() {
                 </button>
               </form>
 
-              <div className="border-t border-neutral-800/40 pt-6">
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-4">Historial Reciente</h3>
-                <ul className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                  {filteredExpenses.map((e) => (
-                    <li key={e.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
-                      <div className="text-sm">
-                        <p className="text-neutral-100 font-medium">
-                          {e.category} {e.note && <span className="text-neutral-500 font-normal ml-1">· {e.note}</span>}
-                        </p>
-                        <div className="mt-1"><span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(e.date)}</span></div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-[15px] font-semibold text-rose-400">-{fmt.format(e.amount)}</span>
-                        <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
-                          <button onClick={() => setExpenseForm(e)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
-                          <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
+              {/* ACORDEÓN DE HISTORIAL DE GASTOS */}
+              <div className="border-t border-neutral-800/40 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setShowExpensesHistory(!showExpensesHistory)}
+                  className="w-full flex items-center justify-between py-2 group focus:outline-none"
+                >
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 group-hover:text-rose-400 transition-colors">
+                    Historial Reciente
+                  </h3>
+                  <svg 
+                    className={`w-4 h-4 text-neutral-500 group-hover:text-rose-400 transition-transform duration-300 ${showExpensesHistory ? 'rotate-180' : ''}`} 
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showExpensesHistory ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+                  <ul className="space-y-3 overflow-y-auto pr-2 max-h-64">
+                    {filteredExpenses.map((e) => (
+                      <li key={e.id} className="flex justify-between items-center rounded-2xl bg-neutral-900/40 p-4 border border-neutral-800/40 transition-all hover:bg-neutral-800/60">
+                        <div className="text-sm">
+                          <p className="text-neutral-100 font-medium">
+                            {e.category} {e.note && <span className="text-neutral-500 font-normal ml-1">· {e.note}</span>}
+                          </p>
+                          <div className="mt-1"><span className="text-[10px] bg-neutral-800 text-neutral-400 px-1.5 py-0.5 rounded">{formatHumanDate(e.date)}</span></div>
                         </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-[15px] font-semibold text-rose-400">-{fmt.format(e.amount)}</span>
+                          <div className="flex items-center gap-1.5 border-l border-neutral-800 pl-4">
+                            <button onClick={() => setExpenseForm(e)} className="p-1.5 text-neutral-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all"><Icon.Edit className="h-4 w-4" /></button>
+                            <button onClick={() => handleDeleteClick('expenses', e.id, setExpenses)} className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all"><Icon.Trash className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </Section>
           </div>
